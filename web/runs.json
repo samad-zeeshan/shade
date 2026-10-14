@@ -1,0 +1,96 @@
+{
+ "default": "plot7-2026-06-28",
+ "runs": [
+  {
+   "id": "plot12-2025-06-20",
+   "file": "runs/plot12-2025-06-20.json",
+   "site": "Plot 12 car park",
+   "city": "Abu Dhabi",
+   "date": "2025-06-20",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:37:08+00:00",
+   "morning_rh": 46,
+   "morning_ta": 34.8,
+   "blind_extra_h": 0.0,
+   "shade_extra_h": 0.0,
+   "ban_over_h": 12.0
+  },
+  {
+   "id": "plot12-2026-06-28",
+   "file": "runs/plot12-2026-06-28.json",
+   "site": "Plot 12 car park",
+   "city": "Abu Dhabi",
+   "date": "2026-06-28",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:41:01+00:00",
+   "morning_rh": 61,
+   "morning_ta": 33.7,
+   "blind_extra_h": 0.0,
+   "shade_extra_h": 0.0,
+   "ban_over_h": 23.0
+  },
+  {
+   "id": "plot7-2025-06-20",
+   "file": "runs/plot7-2025-06-20.json",
+   "site": "Plot 7 podium",
+   "city": "Dubai",
+   "date": "2025-06-20",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:13:14+00:00",
+   "morning_rh": 65,
+   "morning_ta": 33.3,
+   "blind_extra_h": 0.0,
+   "shade_extra_h": 0.0,
+   "ban_over_h": 38.75
+  },
+  {
+   "id": "plot7-2025-07-24",
+   "file": "runs/plot7-2025-07-24.json",
+   "site": "Plot 7 podium",
+   "city": "Dubai",
+   "date": "2025-07-24",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:13:14+00:00",
+   "morning_rh": 67,
+   "morning_ta": 34.2,
+   "blind_extra_h": 11.25,
+   "shade_extra_h": 11.0,
+   "ban_over_h": 39.25
+  },
+  {
+   "id": "plot7-2026-06-14",
+   "file": "runs/plot7-2026-06-14.json",
+   "site": "Plot 7 podium",
+   "city": "Dubai",
+   "date": "2026-06-14",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:13:16+00:00",
+   "morning_rh": 51,
+   "morning_ta": 35.0,
+   "blind_extra_h": 0.0,
+   "shade_extra_h": 0.0,
+   "ban_over_h": 38.5
+  },
+  {
+   "id": "plot7-2026-06-28",
+   "file": "runs/plot7-2026-06-28.json",
+   "site": "Plot 7 podium",
+   "city": "Dubai",
+   "date": "2026-06-28",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:13:16+00:00",
+   "morning_rh": 51,
+   "morning_ta": 35.8,
+   "blind_extra_h": 3.5,
+   "shade_extra_h": 1.0,
+   "ban_over_h": 38.25
+  },
+  {
+   "id": "plot7-2026-06-30",
+   "file": "runs/plot7-2026-06-30.json",
+   "site": "Plot 7 podium",
+   "city": "Dubai",
+   "date": "2026-06-30",
+   "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:13:16+00:00",
+   "morning_rh": 55,
+   "morning_ta": 35.1,
+   "blind_extra_h": 0.75,
+   "shade_extra_h": 0.0,
+   "ban_over_h": 28.75
+  }
+ ]
+}
