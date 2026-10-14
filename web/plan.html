@@ -1,0 +1,113 @@
+<!doctype html>
+<!-- One page that plays back the precomputed shade schedule from data.json. Visible text is filled in by copy() in app.js. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>shade</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%23ebe9e2'/%3E%3Cpath d='M8 2a6 6 0 0 1 0 12z' fill='%235aa9e6'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..600&family=Geist+Mono:wght@400..500&display=swap">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="brand">
+      <span class="mark">shade</span>
+      <span class="site" id="site"></span>
+      <label class="vh" for="run" data-copy="runLabel"></label>
+      <select id="run" class="pick" hidden></select>
+    </div>
+    <nav class="links">
+      <a href="index.html" class="link-story" data-copy="linkStory"></a>
+      <button type="button" id="link-how" aria-controls="fig" aria-expanded="false" data-copy="linkHow"></button>
+      <button type="button" id="link-src" aria-controls="sources" aria-expanded="false" data-copy="linkSources"></button>
+    </nav>
+    <div class="seg" role="radiogroup" id="scenarios"></div>
+  </header>
+
+  <main class="body">
+    <section class="mapwrap">
+      <div id="map"></div>
+      <svg class="compass" id="compass" viewBox="-40 -40 80 80" aria-hidden="true">
+        <circle r="30" class="ring"/>
+        <g id="compass-rose">
+          <line y1="-30" y2="-24" class="tick"/><line y1="24" y2="30" class="tick"/>
+          <line x1="-30" x2="-24" class="tick"/><line x1="24" x2="30" class="tick"/>
+          <text y="-33" class="nlabel">N</text>
+          <g id="sun-tick"><line y1="-30" y2="-14" class="sunline"/><circle cy="-30" r="3" class="sundot"/></g>
+        </g>
+      </svg>
+      <div class="titleblock" id="titleblock">
+        <div class="tb-row"><span class="tb-k" data-copy="tbTime"></span><span class="tb-v mono" id="tb-time"></span></div>
+        <div class="tb-row"><span class="tb-k" data-copy="tbSun"></span><span class="tb-v mono" id="tb-sun"></span></div>
+        <div class="tb-row"><span class="tb-k" data-copy="tbAir"></span><span class="tb-v mono" id="tb-air"></span></div>
+        <div class="tb-row"><span class="tb-k" data-copy="tbHeat"></span><span class="tb-v mono" id="tb-heat"></span></div>
+        <div class="tb-row"><span class="tb-k" data-copy="tbWeather"></span><span class="tb-v" id="tb-weather"></span></div>
+      </div>
+      <div class="legend">
+        <div class="work-ctl" id="work-ctl" hidden>
+          <label><input type="checkbox" id="work-on"> <span data-copy="workToggle"></span></label>
+          <label class="vh" for="work-cls" data-copy="workClsLabel"></label>
+          <select id="work-cls" class="pick"></select>
+        </div>
+        <div class="work-key" id="work-key" hidden>
+          <p data-copy="workKey"></p>
+          <div class="steps" id="work-steps"></div>
+        </div>
+        <p data-copy="mapKeyShadow"></p>
+        <p data-copy="mapKeyDots"></p>
+        <div class="ramp"><span class="mono" data-copy="rampLo"></span><i></i><span class="mono" data-copy="rampHi"></span></div>
+      </div>
+      <div class="tip" id="tip" hidden></div>
+    </section>
+
+    <section class="panel">
+      <p class="pitch" id="pitch"></p>
+      <div class="kpis" id="kpis"></div>
+      <p class="solver" id="solver" hidden></p>
+      <div class="tl-head">
+        <h2 data-copy="tlTitle"></h2>
+        <p class="tl-key">
+          <span><i class="sw ban"></i><span data-copy="keyBan"></span></span>
+          <span><i class="sw ot"></i><span data-copy="keyOvertime"></span></span>
+          <span><i class="sw viol"></i><span data-copy="keyViolation"></span></span>
+        </p>
+      </div>
+      <div class="tl" id="tl"></div>
+      <button type="button" class="dl" id="dl" data-copy="download"></button>
+    </section>
+  </main>
+
+  <footer class="scrub">
+    <button class="play" id="play" type="button"></button>
+    <div class="clock mono" id="clock"></div>
+    <div class="track" id="track" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="59">
+      <div class="ticks" id="ticks"></div>
+      <div class="rail"><div class="thumb" id="thumb"></div></div>
+      <div class="strip" id="strip"></div>
+    </div>
+    <p class="strip-note" data-copy="stripNote"></p>
+  </footer>
+
+  <aside class="sheet" id="sources" hidden aria-labelledby="sources-h">
+    <h2 id="sources-h" data-copy="sourcesTitle"></h2>
+    <p data-copy="sourcesIntro"></p>
+    <ol id="sources-list"></ol>
+  </aside>
+
+  <div class="overlay" id="fig" hidden role="dialog" aria-modal="true" aria-labelledby="fig-h">
+    <div class="fig">
+      <div class="fig-head"><h2 id="fig-h" data-copy="figTitle"></h2><button type="button" id="fig-close" data-copy="close"></button></div>
+      <iframe id="fig-frame" title="Tower shadow figure"></iframe>
+      <p data-copy="figNote"></p>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
