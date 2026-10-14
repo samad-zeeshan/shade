@@ -1,0 +1,21 @@
+[project]
+name = "shade"
+version = "0.1.0"
+description = "Heat-dose work scheduling with a moving building-shadow map"
+readme = "README.md"
+authors = [
+    { name = "samad-zeeshan", email = "124737788+samad-zeeshan@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "numpy>=2.5.4",
+    "ortools>=9.15.6755",
+    "pyproj>=3.8.0",
+    "pytest>=9.1.1",
+    "shapely>=2.2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
