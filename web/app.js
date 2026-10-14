@@ -33,11 +33,19 @@
     // "no hours", "30 minutes", "1 hour", "12 hours". Prose rounds to whole hours above one.
     const hrs = (h) => (h === 0 ? "no hours" : h < 1 ? `${Math.round(h * 60)} minutes` : Math.round(h) === 1 ? "1 hour" : `${Math.round(h)} hours`);
     const cls = { light: "light work", moderate: "moderate work", heavy: "heavy work", very_heavy: "very heavy work" };
-    const prose = { ban_only: "a blanket ban", sun_blind: "heat limits and one site temperature", shade_aware: "heat limits and per-spot shade" };
-    const night = (h) => (h > 0 ? ` The plan moves ${hrs(h)} of work to the night shift.` : "");
-    const over = (m) => (m.violation_hours === 0 ? " Nobody goes over the heat limit."
-      : ` Crews spend ${hrs(m.violation_hours)} over the heat limit. That is not safe.`);
+    const plan = { ban_only: "Ban only", sun_blind: "Heat plan", shade_aware: "Shade plan" };
+    const planSay = {
+      ban_only: "This plan stops work from 12:30 to 15:00. It does not check the heat at other times.",
+      sun_blind: "This plan keeps each worker under the heat limit. It treats every work spot as if it is in full sun.",
+      shade_aware: "This plan keeps each worker under the heat limit. It uses the heat at each work spot, in sun or in shade.",
+    };
+    const prose = { ban_only: "the ban only", sun_blind: "the heat plan", shade_aware: "the shade plan" };
+    const cap = (t) => t[0].toUpperCase() + t.slice(1);
+    const night = (h) => (h > 0 ? ` It moves ${hrs(h)} of work to a night shift.` : "");
+    const over = (m) => (m.violation_hours === 0 ? " No worker goes over the heat limit."
+      : ` Workers spend a total of ${hrs(m.violation_hours)} over the heat limit. That is not safe.`);
     return {
+      plan, planSay,
       title: "shade",
       site: (m) => `${m.site}, ${m.city}, ${longDate(m.date)}`,
       runLabel: "Choose a day",
@@ -45,17 +53,17 @@
         const adj = r.morning_rh >= 50 ? "humid" : r.morning_rh < 35 ? "dry" : "";
         return `${r.city}, ${longDate(r.date)}${adj ? ` · ${adj} morning` : ""}`;
       },
-      workToggle: "Show where work is allowed",
+      workToggle: "Show where work is safe",
       workClsLabel: "Type of work",
       workCls: { light: "Light", moderate: "Moderate", heavy: "Heavy", very_heavy: "Very heavy" },
-      workKey: "Small marks on the ground show how many minutes of this hour a crew may work there.",
+      workKey: "Each mark shows how many minutes of this hour a crew can safely work at that spot.",
       workStep: (m) => (m === 60 ? "60 min" : String(m)),
       gridTitle: (c, time) => `${cls[c] ? cls[c][0].toUpperCase() + cls[c].slice(1) : "Work"} at ${time}`,
       gridWork: (c, m) => (m === 0 ? `A crew doing ${cls[c] || "work"} cannot work here in this hour.`
         : `A crew doing ${cls[c] || "work"} can work here for ${m} minutes of this hour.`),
-      solverBest: "A search over every possible plan proved this one is the best for these rules.",
-      solverGap: (g) => `A search over possible plans shows this one is within ${sig2(g)}% of the best for these rules.`,
-      download: "Download crew plan",
+      solverBest: "The scheduler proved that this is the best plan for these rules.",
+      solverGap: (g) => `This plan is within ${sig2(g)}% of the best possible plan for these rules.`,
+      download: "Download the plan as a spreadsheet",
       csvHead: ["worker", "trade", "start", "end", "task id", "task name", "spot (lat,lon)"],
       csvRest: "rest",
       loadFail: "The schedule file did not load. The page has no data to show.",
@@ -63,7 +71,8 @@
       plotLabel: "Plot 7",
       play: "Play the day", pause: "Pause",
       tbTime: "Time", tbSun: "Sun height", tbAir: "Air temperature", tbHeat: "Average heat index on site", tbWeather: "Weather",
-      weather: (src) => (src && src.startsWith("Open-Meteo") ? "Open-Meteo forecast" : "Typical July day"),
+      weather: (src) => (src && src.startsWith("Open-Meteo archive") ? "Open-Meteo, past weather"
+        : src && src.startsWith("Open-Meteo") ? "Open-Meteo forecast" : "Typical July day"),
       sunVal: (el) => (el <= 1 ? "Below the horizon" : `${Math.round(el)}°`),
       deg: (v) => `${v.toFixed(1)} °C`,
       mapKeyShadow: "Blue areas are in the shadow of a building at the time on the clock.",
@@ -77,7 +86,7 @@
       sourcesTitle: "Sources",
       sourcesIntro: "Each small number on this page points to one source in this list.",
       figTitle: "How it works", figFrame: "A tower and its shadow on a plot",
-      figNote: "Move the pointer across the sky. The shadow of the tower moves across the plot. Pegs in the shadow can work. Pegs in the sun must rest.",
+      figNote: "Move the pointer across the sky. The shadow of the tower moves across the plot. Crews at work spots in the shadow can keep working. Crews in the sun must rest.",
       // Tooltip card, shared by the map dots and the timeline bars.
       tipSub: (t) => `This is ${cls[t.cls] || "work"} for a crew of ${t.crew}.`,
       tipAt: (time, f, v) => `At ${time} this spot is ${f > 0.5 ? "in shade" : f >= 0.1 ? "in part shade" : "in full sun"}. The heat index is ${v.toFixed(1)} °C.`,
@@ -85,37 +94,38 @@
         if (w === 0 || (r != null && r < 15)) return "No work is permitted here at this time.";
         let out = `A crew can work here for ${w} minutes of this hour.`;
         if (r == null) return out;
-        return out + (r >= 240 ? " One run has no time limit." : ` One run can last ${r} minutes. Then the crew rests in shade.`);
+        return out + (r >= 240 ? " One work period has no time limit." : ` One work period can last ${r} minutes. Then the crew rests in the shade.`);
       },
       tipUntil: (e) => `Work stays permitted here until ${e}.`,
       tipNext: (a, b) => (a ? `The next window is from ${a} to ${b}.` : "Work is not permitted here again today."),
       tipWho: (name, time) => `${name} works on this task at ${time}.`,
       tipOver: "This worker is over the heat limit here. That is not safe.",
       scenKey: (i) => String(i + 1),
-      // Sentences for the selected plan, then one comparison. Every tab compares against the shade-aware
-      // plan, and the shade-aware tab compares against the one-temperature plan.
+      // The plan description, then the numbers for the selected plan, then one comparison.
+      // Every tab compares against the shade plan, and the shade plan tab compares against the heat plan.
       pitch: (M, key) => {
         const b = M.ban_only, s = M.sun_blind, a = M.shade_aware, m = M[key];
-        const out = [];
-        if (key === "ban_only") {
-          out.push(`With ${prose.ban_only}, crews spend ${hrs(b.violation_hours)} over the heat limit.`
-            + (b.violation_hours > 0 ? " That is not safe." : ""));
-        } else {
-          out.push(`With ${prose[key]}, crews need ${hrs(m.overtime_hours)} of overtime.${night(m.unscheduled_hours)}${over(m)}`);
-          if (m.unscheduled_hours > 0) out.push("A night shift costs more and needs lights.");
-        }
+        const out = [planSay[key]];
         const before = s.overtime_hours + s.unscheduled_hours, after = a.overtime_hours + a.unscheduled_hours;
         if (key === "ban_only") {
-          out.push(`A plan with ${prose.shade_aware} ${a.violation_hours === 0 ? "keeps every crew under the heat limit" : `has crews over the heat limit for ${hrs(a.violation_hours)}`}`
+          out.push(`With ${prose.ban_only}, workers spend a total of ${hrs(b.violation_hours)} over the heat limit.`
+            + (b.violation_hours > 0 ? " That is not safe." : ""));
+          out.push(`The shade plan ${a.violation_hours === 0 ? "keeps every worker under the heat limit" : `has workers over the heat limit for ${hrs(a.violation_hours)}`}`
             + ` and needs ${a.overtime_hours === 0 ? "no overtime" : `${hrs(a.overtime_hours)} of overtime`}.`);
-        } else if (before === 0) {
-          out.push("Neither plan with heat limits needs overtime or a night shift on this day. Shade brings no gain here.");
+          return out;
+        }
+        out.push(`${cap(prose[key])} needs ${hrs(m.overtime_hours)} of overtime.${night(m.unscheduled_hours)}${over(m)}`);
+        if (m.unscheduled_hours > 0) out.push("A night shift costs more and needs lights.");
+        const who = key === "shade_aware" ? "This plan" : "The shade plan";
+        const vs = key === "shade_aware" ? "the heat plan" : "this plan";
+        if (before === 0 && after === 0) {
+          out.push("The heat plan and the shade plan need no extra hours on this day. Shade gives no gain here.");
+        } else if (after > before * 1.1) {
+          out.push(`${who} needs more extra hours than ${vs} on this day. Shade gives no gain here.`);
+        } else if (after < before * 0.9) {
+          out.push(`${who} cuts extra hours by ${sig2(100 * (1 - after / before))}% compared with ${vs}. That is a clear gain.`);
         } else {
-          const who = key === "shade_aware" ? "This plan" : `A plan with ${prose.shade_aware}`;
-          const vs = key === "shade_aware" ? "a plan that uses one site temperature" : "this plan";
-          out.push(after < before * 0.9
-            ? `${who} cuts overtime and night-shift work by ${sig2(100 * (1 - after / before))}% compared with ${vs}. That is a clear gain.`
-            : `${who} changes overtime and night-shift work very little compared with ${vs}. The gain is small.`);
+          out.push(`${who} changes extra hours very little compared with ${vs}. The gain is small.`);
         }
         return out;
       },
@@ -133,13 +143,13 @@
           say: (m, n) => m.tasks_done_by_17 === n ? "Crews finish every task inside the shift. The job is on plan."
             : m.unscheduled_hours > 0 ? "Some work moves to the night shift. That costs more."
             : "Some tasks end after the shift. They finish late." },
-        peak: { lab: "Hottest spot worked", unit: "°C", cite: ["liljegren2008", "brimicombe2022"],
+        peak: { lab: "Highest heat index worked", unit: "°C", cite: ["liljegren2008", "brimicombe2022"],
           say: (m) => m.violation_hours > 0 ? "Some work happens in heat above the limit for the task. That is not safe."
             : m.peak_wbgt_worked > 32.5 ? "Crews work in strong heat, but only for the minutes the limit allows. That is safe."
             : "All work stays in heat below the limit for the task. That is safe." },
-        run: { lab: "Longest single run", unit: "min", cite: ["malchaire2001"],
-          say: (m) => m.runs_over_phs > 0 ? "Some runs go past the body-heat limit. That is not safe."
-            : "Each run stops before the body-heat limit. That is safe." },
+        run: { lab: "Longest work period", unit: "min", cite: ["malchaire2001"],
+          say: (m) => m.runs_over_phs > 0 ? "Some work periods last until the body gets too hot. That is not safe."
+            : "Each work period stops before the body gets too hot. That is safe." },
       },
     };
   }
@@ -335,7 +345,8 @@
       key.className = "k";
       key.textContent = C.scenKey(i);
       const lab = document.createElement("span");
-      lab.textContent = D.scenarios[k].label;
+      lab.textContent = C.plan[k] || D.scenarios[k].label;
+      b.title = C.planSay[k];
       b.append(key, lab);
       b.addEventListener("click", () => setScenario(k));
       seg.appendChild(b);
