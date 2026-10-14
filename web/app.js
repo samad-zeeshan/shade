@@ -4,15 +4,20 @@
 (function () {
   "use strict";
 
-  const INK = "#1a1a18";
-  const HEAT = "#e4572e";
-  const SHADE = "#2c6e9b";
-  // The dot and strip ramp runs white to orange over 26..36 °C. Below 26 every class may work all hour,
+  // Colours live as tokens in style.css. Reading them here keeps the map and the SVG on one palette.
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n) => css.getPropertyValue(`--${n}`).trim();
+  const INK = tok("ink"), INK3 = tok("ink-3"), PAPER = tok("paper"), HEAT = tok("heat"), SHADE = tok("shade");
+  // The dot and strip ramp runs dim grey to orange over 26..36 °C. Grey, not white, so a cool dot stays quiet on the dark map. Below 26 every class may work all hour,
   // above about 33 nobody may work at all, so this range spends the whole ramp on the part that matters.
   const RAMP_LO = 26, RAMP_HI = 36;
   const STEP_MS = 350;
-  const BASEMAP = "https://tiles.openfreemap.org/styles/positron";
+  const BASEMAP = "https://tiles.openfreemap.org/styles/dark";
   const SCEN_ORDER = ["ban_only", "sun_blind", "shade_aware"];
+  const TILES = ["overtime", "violation", "done", "peak", "run"];
+  const HOME_SLOT = 8; // 07:00
+  const FIG_SRC = "hairline-tower.html?theme=dark"; // the figure defaults to a light bench
+  const WORK_MIN_BY_LOAD = { 12: 60, 16: 45, 24: 30, 48: 15 };
   const TRADE_ORDER = ["steel", "concrete", "general", "electrical"];
   // 16 desaturated inks, one per task. Red, blue and orange hues are left out so bars never read as heat or shade.
   const TASK_INKS = [
@@ -22,61 +27,85 @@
 
   // Every visible string lives here so the wording can be reviewed in one place.
   function copy() {
-    const hrs = (h) => (h === 0 ? "no" : h < 0.5 ? "less than one" : String(Math.round(h)));
-    const cls = { light: "Light work", moderate: "Moderate work", heavy: "Heavy work", very_heavy: "Very heavy work" };
+    // "no hours", "30 minutes", "1 hour", "12 hours". Prose rounds to whole hours above one.
+    const hrs = (h) => (h === 0 ? "no hours" : h < 1 ? `${Math.round(h * 60)} minutes` : Math.round(h) === 1 ? "1 hour" : `${Math.round(h)} hours`);
+    const cls = { light: "light work", moderate: "moderate work", heavy: "heavy work", very_heavy: "very heavy work" };
     const prose = { ban_only: "a blanket ban", sun_blind: "heat limits and one site temperature", shade_aware: "heat limits and per-spot shade" };
+    const night = (h) => (h > 0 ? ` The plan moves ${hrs(h)} of work to the night shift.` : "");
     return {
       title: "shade",
       site: (m) => `${m.site}, ${m.city}, ${longDate(m.date)}`,
-      loadFail: "The schedule file could not be loaded, so there is nothing to show yet.",
-      fallback: "The street map could not load, so only the buildings are drawn.",
+      loadFail: "The schedule file did not load. The page has no data to show.",
+      fallback: "The street map did not load. The page shows only the buildings.",
       plotLabel: "Plot 7",
       play: "Play the day", pause: "Pause",
-      tbTime: "Time", tbSun: "Sun height", tbAir: "Air temperature", tbHeat: "Average heat index on site",
-      sunVal: (el) => (el <= 1 ? "below horizon" : `${Math.round(el)}°`),
+      tbTime: "Time", tbSun: "Sun height", tbAir: "Air temperature", tbHeat: "Average heat index on site", tbWeather: "Weather",
+      weather: (src) => (src && src.startsWith("Open-Meteo") ? "Open-Meteo forecast" : "Typical July day"),
+      sunVal: (el) => (el <= 1 ? "Below the horizon" : `${Math.round(el)}°`),
       deg: (v) => `${v.toFixed(1)} °C`,
-      mapKeyShadow: "Blue areas lie in the shadow of a building at the time shown.",
-      mapKeyDots: "Each dot is a work spot. A more orange dot has a higher heat index (WBGT), which adds up air temperature, humidity, sun and wind. A thick ring means a crew works there now.",
+      mapKeyShadow: "Blue areas are in the shadow of a building at the time on the clock.",
+      mapKeyDots: "Each dot is a work spot. The heat index (WBGT) combines air temperature, humidity, sun and wind. A more orange dot has a higher heat index. A thick ring shows that a crew works there now.",
       rampLo: `${RAMP_LO} °C`, rampHi: `${RAMP_HI} °C`,
       stripNote: "Each cell shows the average heat index on site for 15 minutes. More orange is hotter.",
-      tlTitle: "Each row is one worker's day in 15-minute steps.",
+      tlTitle: "Each row shows the day of one worker in 15-minute steps.",
       keyBan: "Midday ban", keyOvertime: "Overtime", keyViolation: "Over the heat limit",
       trade: { steel: "Steel fixers", concrete: "Concrete crew", general: "General labour", electrical: "Electricians" },
-      cls,
-      tipClass: "Type of work", tipHeat: "Heat index", tipShade: "In shade", tipWho: "Worker", tipWhen: "Time",
-      tipOver: "This worker was over the heat limit here.",
+      linkSources: "Sources", linkHow: "How it works", close: "Close",
+      sourcesTitle: "Sources",
+      sourcesIntro: "Each small number on this page points to one source in this list.",
+      figTitle: "How it works", figFrame: "A tower and its shadow on a plot",
+      figNote: "Move the pointer across the sky. The shadow of the tower moves across the plot. Pegs in the shadow can work. Pegs in the sun must rest.",
+      // Tooltip card, shared by the map dots and the timeline bars.
+      tipSub: (t) => `This is ${cls[t.cls] || "work"} for a crew of ${t.crew}.`,
+      tipAt: (time, f, v) => `At ${time} this spot is ${f > 0.5 ? "in shade" : f >= 0.1 ? "in part shade" : "in full sun"}. The heat index is ${v.toFixed(1)} °C.`,
+      tipWork: (w, r) => {
+        if (w === 0 || (r != null && r < 15)) return "No work is permitted here at this time.";
+        let out = `A crew can work here for ${w} minutes of this hour.`;
+        if (r == null) return out;
+        return out + (r >= 240 ? " One run has no time limit." : ` One run can last ${r} minutes. Then the crew rests in shade.`);
+      },
+      tipUntil: (e) => `Work stays permitted here until ${e}.`,
+      tipNext: (a, b) => (a ? `The next window is from ${a} to ${b}.` : "Work is not permitted here again today."),
+      tipWho: (name, time) => `${name} works on this task at ${time}.`,
+      tipOver: "This worker is over the heat limit here. That is not safe.",
       scenKey: (i) => String(i + 1),
       pitch: (M) => {
         const b = M.ban_only, s = M.sun_blind, a = M.shade_aware;
         const out = [];
-        out.push(`With ${prose.ban_only}, crews spent ${hrs(b.violation_hours)} worker-hours over the heat limit.`);
-        let sb = `With ${prose.sun_blind}, crews needed ${hrs(s.overtime_hours)} hours of overtime`;
-        sb += s.unscheduled_hours > 0 ? ` and left ${hrs(s.unscheduled_hours)} hours of work undone.` : ".";
-        out.push(sb);
-        let sa = `With ${prose.shade_aware}, crews needed ${hrs(a.overtime_hours)} hours of overtime`;
-        sa += a.violation_hours === 0 ? " and nobody went over the limit." : `, but ${hrs(a.violation_hours)} worker-hours were over the limit.`;
-        out.push(sa);
+        out.push(`With ${prose.ban_only}, crews spend ${hrs(b.violation_hours)} over the heat limit.`
+          + (b.violation_hours > 0 ? " That is not safe." : ""));
+        out.push(`With ${prose.sun_blind}, crews need ${hrs(s.overtime_hours)} of overtime.${night(s.unscheduled_hours)}`);
+        if (SCEN_ORDER.some((k) => M[k].unscheduled_hours > 0)) {
+          out.push("A night shift costs more and needs lights.");
+        }
+        out.push(`With ${prose.shade_aware}, crews need ${hrs(a.overtime_hours)} of overtime.${night(a.unscheduled_hours)}`
+          + (a.violation_hours === 0 ? " Nobody goes over the heat limit." : ` Crews spend ${hrs(a.violation_hours)} over the heat limit. That is not safe.`));
         const before = s.overtime_hours + s.unscheduled_hours, after = a.overtime_hours + a.unscheduled_hours;
-        if (before > 0 && after < before * 0.9) out.push(`Using the shade cuts late or unfinished work by ${sig2(100 * (1 - after / before))}%, which is a clear gain.`);
-        else if (before > 0) out.push("Using the shade barely changes late or unfinished work here, so the gain is small.");
+        if (before > 0 && after < before * 0.9) out.push(`Per-spot shade cuts overtime and night-shift work by ${sig2(100 * (1 - after / before))}%. That is a clear gain.`);
+        else if (before > 0) out.push("Per-spot shade changes overtime and night-shift work very little. The gain is small.");
         return out;
       },
+      // cite: source keys from meta.sources, shown as superscript numbers on the label.
       kpi: {
         overtime: { lab: "Overtime after 17:00", unit: "h",
-          say: (m) => m.overtime_hours === 0 ? "Every crew finished inside the shift, so there is no extra cost."
-            : m.overtime_hours < 8 ? "Some crews stayed past the end of the shift, which adds a little cost."
-            : "Crews stayed long past the end of the shift, which is costly." },
-        violation: { lab: "Over the heat limit", unit: "h",
-          say: (m) => m.violation_hours === 0 ? "Nobody worked past the heat limit. That is safe."
-            : m.violation_hours < 4 ? "A few crews briefly worked past the heat limit. That is not safe."
-            : "Crews worked past the heat limit for many hours. That is unsafe." },
+          say: (m) => m.overtime_hours === 0 ? "Every crew stops at the end of the shift. There is no extra cost."
+            : m.overtime_hours < 8 ? "Some crews work after the end of the shift. This adds a small cost."
+            : "Crews work long after the end of the shift. This is costly." },
+        violation: { lab: "Over the heat limit", unit: "h", cite: ["niosh2016", "garzon2017"],
+          say: (m) => m.violation_hours === 0 ? "Nobody works past the heat limit. That is safe."
+            : m.violation_hours < 4 ? "Some crews work past the heat limit for a short time. That is not safe."
+            : "Crews work past the heat limit for many hours. That is not safe." },
         done: { lab: "Tasks done by 17:00", unit: (n) => `of ${n}`,
-          say: (m, n) => m.tasks_done_by_17 === n ? "Every task was finished before the shift ended. That is on plan."
-            : m.unscheduled_hours > 0 ? "Some work never fit into the day, so the job falls behind."
-            : "Some tasks ran past the end of the shift, so they finished late." },
-        peak: { lab: "Hottest spot worked", unit: "°C",
-          say: (m) => m.peak_wbgt_worked > 32.5 ? "Someone worked in heat where every task should stop. That is unsafe."
-            : "All work stayed below the heat where every task must stop. That is safe." },
+          say: (m, n) => m.tasks_done_by_17 === n ? "Crews finish every task inside the shift. The job is on plan."
+            : m.unscheduled_hours > 0 ? "Some work moves to the night shift. That costs more."
+            : "Some tasks end after the shift. They finish late." },
+        peak: { lab: "Hottest spot worked", unit: "°C", cite: ["liljegren2008", "brimicombe2022"],
+          say: (m) => m.violation_hours > 0 ? "Some work happens in heat above the limit for the task. That is not safe."
+            : m.peak_wbgt_worked > 32.5 ? "Crews work in strong heat, but only for the minutes the limit allows. That is safe."
+            : "All work stays in heat below the limit for the task. That is safe." },
+        run: { lab: "Longest single run", unit: "min", cite: ["malchaire2001"],
+          say: (m) => m.runs_over_phs > 0 ? "Some runs go past the body-heat limit. That is not safe."
+            : "Each run stops before the body-heat limit. That is safe." },
       },
     };
   }
@@ -97,10 +126,20 @@
     const t = h0 * 60 + m0 + slot * slotMin;
     return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
   }
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   function heatColor(v) {
     const f = Math.min(1, Math.max(0, (v - RAMP_LO) / (RAMP_HI - RAMP_LO)));
-    const mix = (a, b) => Math.round(a + (b - a) * f);
-    return `rgb(${mix(255, 0xe4)},${mix(255, 0x57)},${mix(255, 0x2e)})`;
+    const a = rgb(INK3), b = rgb(HEAT);
+    return `rgb(${a.map((x, i) => Math.round(x + (b[i] - x) * f)).join(",")})`;
+  }
+  // Run labels sit on the task ink, so each one takes paper or ink, whichever contrasts more.
+  function labelOn(hex) {
+    const lum = (h) => {
+      const c = rgb(h).map((x) => x / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    const l = lum(hex);
+    return (l + 0.05) / (lum(PAPER) + 0.05) > (lum(INK) + 0.05) / (l + 0.05) ? PAPER : INK;
   }
   const svgNS = "http://www.w3.org/2000/svg";
   function el(tag, attrs, parent) {
@@ -109,23 +148,43 @@
     if (parent) parent.appendChild(n);
     return n;
   }
-  function fillTip(tip, title, rows, note) {
+  // Older data files lack work_min and run_min. work_min then comes from the load column, run_min is left out.
+  function workMin(t, s) { return t.work_min ? t.work_min[s] : WORK_MIN_BY_LOAD[t.load[s]] || 0; }
+  function runMin(t, s) { return t.run_min ? t.run_min[s] : null; }
+  // A slot is open when the hourly rule permits some work and one run can last at least one 15-minute step.
+  function isOpen(t, s) { const r = runMin(t, s); return workMin(t, s) > 0 && (r == null || r >= 15); }
+
+  // End of the open span that holds s, then the next open span after it, so an open slot does not point at itself.
+  function nextWindow(t, s) {
+    let e = s;
+    while (e < N && isOpen(t, e)) e++;
+    let a = e;
+    while (a < N && !isOpen(t, a)) a++;
+    let b = a;
+    while (b < N && isOpen(t, b)) b++;
+    return { end: e, next: a < N ? [a, b] : null };
+  }
+
+  function fillTip(tip, task, s, extra) {
+    const at = (k) => clock(k, D.meta.slot_minutes, D.meta.first_slot);
+    const w = nextWindow(task, s);
+    const lines = [
+      C.tipAt(at(s), task.shade[s], task.wbgt[s]),
+      C.tipWork(isOpen(task, s) ? workMin(task, s) : 0, runMin(task, s)),
+      (isOpen(task, s) ? C.tipUntil(at(w.end)) + " " : "") + (w.next ? C.tipNext(at(w.next[0]), at(w.next[1])) : C.tipNext(null)),
+      ...(extra || []),
+    ];
     tip.replaceChildren();
     const b = document.createElement("b");
-    b.textContent = title;
-    tip.appendChild(b);
-    for (const [k, v] of rows) {
-      const r = document.createElement("div");
-      r.className = "row";
-      const a = document.createElement("span"), c = document.createElement("span");
-      a.textContent = k; c.textContent = v;
-      r.append(a, c);
-      tip.appendChild(r);
-    }
-    if (note) {
-      const p = document.createElement("div");
-      p.style.cssText = `margin-top:6px;color:${HEAT}`;
-      p.textContent = note;
+    b.textContent = task.name;
+    const sub = document.createElement("div");
+    sub.className = "sub";
+    sub.textContent = C.tipSub(task);
+    tip.append(b, sub);
+    for (const line of lines) {
+      const p = document.createElement("p");
+      if (line === C.tipOver) p.className = "over";
+      p.textContent = line;
       tip.appendChild(p);
     }
     tip.hidden = false;
@@ -156,9 +215,11 @@
     tasksById = Object.fromEntries(D.tasks.map((t) => [t.id, t]));
     taskIdx = Object.fromEntries(D.tasks.map((t, i) => [t.id, i]));
     document.getElementById("site").textContent = C.site(D.meta);
+    document.getElementById("tb-weather").textContent = C.weather(D.meta.weather_source);
     for (const k of SCEN_ORDER) derived[k] = derive(D.scenarios[k]);
 
     buildHeader();
+    buildPanels();
     buildPitch();
     buildKpis();
     buildScrubber();
@@ -222,6 +283,46 @@
     for (const b of document.querySelectorAll("#scenarios button")) b.setAttribute("aria-checked", String(b.dataset.k === scen));
   }
 
+  // Sources sheet and the figure overlay. Both open from header links and close with Escape.
+  let srcSheet, srcLink, figBox, figLink;
+  function buildPanels() {
+    srcSheet = document.getElementById("sources");
+    srcLink = document.getElementById("link-src");
+    figBox = document.getElementById("fig");
+    figLink = document.getElementById("link-how");
+    document.getElementById("fig-frame").title = C.figFrame;
+    // Older data files carry no source list, so the link would open an empty panel.
+    srcLink.hidden = !(D.meta.sources || []).length;
+    const list = document.getElementById("sources-list");
+    for (const so of D.meta.sources || []) {
+      const li = document.createElement("li");
+      li.id = `src-${so.key}`;
+      const div = document.createElement("div"), b = document.createElement("b"), sp = document.createElement("span");
+      b.textContent = so.short;
+      sp.textContent = so.citation;
+      div.append(b, sp);
+      li.appendChild(div);
+      list.appendChild(li);
+    }
+    srcLink.addEventListener("click", () => showSources(srcSheet.hidden));
+    figLink.addEventListener("click", () => showFig(figBox.hidden));
+    document.getElementById("fig-close").addEventListener("click", () => showFig(false));
+    figBox.addEventListener("click", (e) => { if (e.target === figBox) showFig(false); });
+  }
+  function showSources(on) {
+    srcSheet.hidden = !on;
+    srcLink.setAttribute("aria-expanded", String(on));
+  }
+  function showFig(on) {
+    const frame = document.getElementById("fig-frame");
+    // The figure loads on first open only, so a missing file never costs anything at page load.
+    if (on && !frame.getAttribute("src")) frame.src = FIG_SRC;
+    if (on) stop();
+    figBox.hidden = !on;
+    figLink.setAttribute("aria-expanded", String(on));
+    (on ? document.getElementById("fig-close") : figLink).focus();
+  }
+
   function buildPitch() {
     const M = Object.fromEntries(SCEN_ORDER.map((k) => [k, D.scenarios[k].metrics]));
     document.getElementById("pitch").textContent = C.pitch(M).join(" ");
@@ -230,23 +331,44 @@
   const kpiState = {};
   function buildKpis() {
     const box = document.getElementById("kpis");
-    for (const key of ["overtime", "violation", "done", "peak"]) {
+    const m = D.scenarios[scen].metrics;
+    // Older data files have no run metric. The hottest spot tile then comes back in its place.
+    let tiles = m.longest_run_min == null ? TILES.filter((k) => k !== "run") : TILES;
+    if (!tiles.includes("peak") && m.longest_run_min == null) tiles = [...tiles, "peak"];
+    box.style.setProperty("--tiles", tiles.length);
+    box.classList.toggle("five", tiles.length === 5);
+    const srcNo = Object.fromEntries((D.meta.sources || []).map((so, i) => [so.key, i + 1]));
+    for (const key of tiles) {
       const d = document.createElement("div");
       d.className = "kpi";
       d.innerHTML = '<div class="lab"></div><div class="val"><span class="n"></span><small></small></div><p class="say"></p>';
-      d.querySelector(".lab").textContent = C.kpi[key].lab;
+      const lab = d.querySelector(".lab");
+      lab.textContent = C.kpi[key].lab;
+      const nums = (C.kpi[key].cite || []).map((k) => srcNo[k]).filter(Boolean);
+      if (nums.length) {
+        const sup = document.createElement("sup");
+        for (const n of nums) {
+          const a = document.createElement("a");
+          a.href = "#sources";
+          a.textContent = n;
+          a.addEventListener("click", (e) => { e.preventDefault(); showSources(true); });
+          sup.appendChild(a);
+        }
+        lab.appendChild(sup);
+      }
       box.appendChild(d);
       kpiState[key] = { node: d, cur: 0 };
     }
     renderKpis(false);
   }
   function kpiValue(key, m) {
-    return { overtime: m.overtime_hours, violation: m.violation_hours, done: m.tasks_done_by_17, peak: m.peak_wbgt_worked }[key];
+    return { overtime: m.overtime_hours, violation: m.violation_hours, done: m.tasks_done_by_17, peak: m.peak_wbgt_worked, run: m.longest_run_min }[key];
   }
   function kpiFormat(key, v) {
-    if (key === "done") return String(Math.round(v));
+    if (key === "done" || key === "run") return String(Math.round(v));
     if (key === "peak") return v.toFixed(1);
-    return sig2(v);
+    // Hours come in quarter steps, so one decimal is exact and "0.50" never shows.
+    return String(Math.round(v * 4) / 4);
   }
   // Count-up over 400 ms with an ease-out so the eye lands on the final value, not the motion.
   function renderKpis(animate) {
@@ -257,7 +379,7 @@
       const num = st.node.querySelector(".n");
       st.node.querySelector("small").textContent = typeof spec.unit === "function" ? spec.unit(n) : spec.unit;
       st.node.querySelector(".say").textContent = spec.say(m, n);
-      st.node.querySelector(".val").classList.toggle("bad", key === "violation" && to > 0);
+      st.node.querySelector(".val").classList.toggle("bad", (key === "violation" && to > 0) || (key === "run" && m.runs_over_phs > 0));
       st.cur = to;
       if (!animate) { num.textContent = kpiFormat(key, to); continue; }
       const t0 = performance.now();
@@ -293,7 +415,7 @@
     const defs = el("defs", {}, svg);
     // Overtime hatch: thin 45 degree strokes in muted ink, wide spacing so bars on top still read.
     const pat = el("pattern", { id: "hatch", width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
-    el("line", { x1: 0, y1: 0, x2: 0, y2: 5, stroke: "#b3b1a9", "stroke-width": 0.7 }, pat);
+    el("line", { x1: 0, y1: 0, x2: 0, y2: 5, stroke: INK3, "stroke-width": 0.7 }, pat);
 
     let y = T;
     const yOf = new Map();
@@ -315,10 +437,10 @@
     const [b0, b1] = D.meta.ban_slots, se = D.meta.shift_end_slot;
 
     const bg = el("g", {}, svg);
-    el("rect", { x: x(b0), y: T - 4, width: (b1 + 1 - b0) * colW, height: bottom - T + 4, fill: "#ebeae5" }, bg);
+    el("rect", { x: x(b0), y: T - 4, width: (b1 + 1 - b0) * colW, height: bottom - T + 4, fill: tok("ban") }, bg);
     el("rect", { x: x(se), y: T - 4, width: (N - se) * colW, height: bottom - T + 4, fill: "url(#hatch)" }, bg);
     for (let s = 0; s <= N; s += 12) {
-      el("line", { x1: x(s), x2: x(s), y1: T - 4, y2: bottom, stroke: s === se ? "#8b8b84" : "#e9e8e2", "stroke-width": 1 }, bg);
+      el("line", { x1: x(s), x2: x(s), y1: T - 4, y2: bottom, stroke: s === se ? tok("ink-2") : tok("hair-2"), "stroke-width": 1 }, bg);
       const t = el("text", { x: x(s), y: 10, "text-anchor": s === 0 ? "start" : s === N ? "end" : "middle" }, bg);
       t.textContent = clock(s, D.meta.slot_minutes, D.meta.first_slot);
     }
@@ -326,7 +448,7 @@
     for (const h of heads) {
       const t = el("text", { x: 0, y: h.y - 5, class: "grp" }, bg);
       t.textContent = (C.trade[h.tr] || h.tr).toUpperCase();
-      el("line", { x1: Math.max(L, t.getComputedTextLength() + 8), x2: W, y1: h.y - 8.5, y2: h.y - 8.5, stroke: "#d6d4cc", "stroke-width": 1, "shape-rendering": "crispEdges" }, bg);
+      el("line", { x1: Math.max(L, t.getComputedTextLength() + 8), x2: W, y1: h.y - 8.5, y2: h.y - 8.5, stroke: tok("hair"), "stroke-width": 1, "shape-rendering": "crispEdges" }, bg);
     }
     for (const r of rows) {
       const name = el("text", { x: 0, y: yOf.get(r.wi) + rowH / 2 + 3.5, class: "wname" }, bg);
@@ -334,7 +456,7 @@
     }
 
     const layerHost = el("g", {}, svg);
-    const play = el("line", { y1: T - 6, y2: bottom + 2, stroke: INK, "stroke-width": 1, "shape-rendering": "crispEdges" }, svg);
+    const play = el("line", { y1: T - 6, y2: bottom + 2, stroke: INK, "stroke-width": 1, "shape-rendering": "crispEdges", "pointer-events": "none" }, svg);
     const tip = document.createElement("div");
     tip.className = "tip";
     tip.hidden = true;
@@ -369,7 +491,7 @@
         if (s === N || row[s] !== row[runStart]) {
           const id = row[runStart], len = s - runStart;
           if (id && len * colW >= 40) {
-            const t = el("text", { x: x(runStart) + (len * colW) / 2, y: ry + bh / 2 + 3, "text-anchor": "middle", class: "runlab", "data-t": id }, g);
+            const t = el("text", { x: x(runStart) + (len * colW) / 2, y: ry + bh / 2 + 3, "text-anchor": "middle", class: "runlab", fill: labelOn(TASK_INKS[taskIdx[id] % 16]), "data-t": id }, g);
             t.textContent = id;
           }
           runStart = s;
@@ -401,12 +523,9 @@
     const tid = t.getAttribute && t.getAttribute("data-t");
     if (!tid || t.tagName !== "rect") { tl.tip.hidden = true; highlightDot(null); return; }
     const task = tasksById[tid], s = +t.dataset.s, wi = +t.dataset.w;
-    fillTip(tl.tip, task.name, [
-      [C.tipWho, D.workers[wi].name],
-      [C.tipWhen, `${clock(s, D.meta.slot_minutes, D.meta.first_slot)} to ${clock(s + 1, D.meta.slot_minutes, D.meta.first_slot)}`],
-      [C.tipHeat, C.deg(task.wbgt[s])],
-      [C.tipShade, `${Math.round(task.shade[s] * 100)}%`],
-    ], derived[scen].viol[wi][s] ? C.tipOver : null);
+    const extra = [C.tipWho(D.workers[wi].name, clock(s, D.meta.slot_minutes, D.meta.first_slot))];
+    if (derived[scen].viol[wi][s]) extra.push(C.tipOver);
+    fillTip(tl.tip, task, s, extra);
     const box = tl.host.getBoundingClientRect();
     placeTip(tl.tip, box, e.clientX - box.left, e.clientY - box.top);
     highlightDot(tid);
@@ -508,7 +627,10 @@
   function bindKeys() {
     window.addEventListener("keydown", (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.code === "Space") { e.preventDefault(); toggle(); }
+      if (e.key === "Escape") { if (!figBox.hidden) showFig(false); else showSources(false); return; }
+      if (!figBox.hidden) return;
+      if (e.key === "0" || e.key === "Home") { e.preventDefault(); stop(); setSlot(HOME_SLOT); }
+      else if (e.code === "Space") { e.preventDefault(); toggle(); }
       else if (e.key === "ArrowRight") { e.preventDefault(); stop(); setSlot(Math.min(N - 1, slot + 1)); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); stop(); setSlot(Math.max(0, slot - 1)); }
       else if (e.key >= "1" && e.key <= "3") setScenario(SCEN_ORDER[+e.key - 1]);
@@ -540,6 +662,7 @@
     if (!k || k === scen) return;
     scen = k;
     markScenario();
+    if (tl.tip) tl.tip.hidden = true;
     renderKpis(true);
     drawLayer(true);
     updateMap();
@@ -548,7 +671,7 @@
   // ---------- map ----------
   const FALLBACK_STYLE = {
     version: 8, sources: {},
-    layers: [{ id: "ground", type: "background", paint: { "background-color": "#f1f0eb" } }],
+    layers: [{ id: "ground", type: "background", paint: { "background-color": tok("ground") } }],
   };
   let night = null, plotCenter;
 
@@ -588,6 +711,8 @@
     });
     // Tile errors from the basemap are expected offline. Handling them here keeps them out of the console.
     map.on("error", () => {});
+    // The dark style asks for pattern images it does not ship. A blank pixel stands in and keeps the console clean.
+    map.on("styleimagemissing", (e) => { if (!map.hasImage(e.id)) map.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) }); });
     await new Promise((res) => map.once("load", res));
     // Compact attribution opens by default and would cover the title block. It stays one click away.
     const attrib = document.querySelector(".maplibregl-ctrl-attrib");
@@ -600,11 +725,11 @@
     map.addSource("shadow", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addSource("bld", { type: "geojson", data: D.buildings });
     map.addSource("tasks", { type: "geojson", data: taskFC() });
-    // The plot is painted in paper colour so the road interchange under the site disappears.
+    // The plot is painted in page colour so the road interchange under the site disappears.
     // It sits below the shadow layer so shadows still fall across it.
     const plot = plotPolygon(18);
     map.addSource("plot", { type: "geojson", data: plot });
-    map.addLayer({ id: "plot-fill", type: "fill", source: "plot", paint: { "fill-color": "#fafaf7", "fill-opacity": 1 } });
+    map.addLayer({ id: "plot-fill", type: "fill", source: "plot", paint: { "fill-color": PAPER, "fill-opacity": 1 } });
     map.addLayer({ id: "plot-line", type: "line", source: "plot", paint: { "line-color": INK, "line-width": 1, "line-dasharray": [4, 3] } });
     // An HTML marker avoids needing a glyph server, which the offline fallback style lacks.
     const north = plot.geometry.coordinates[0].reduce((a, c) => (c[1] > a[1] ? c : a));
@@ -614,12 +739,12 @@
     new maplibregl.Marker({ element: lab, anchor: "bottom" }).setLngLat(north).addTo(map);
     map.addLayer({ id: "shadow", type: "fill", source: "shadow", paint: { "fill-color": SHADE, "fill-opacity": 0.22, "fill-antialias": false } });
     map.addLayer({ id: "bld-3d", type: "fill-extrusion", source: "bld", paint: {
-      "fill-extrusion-color": "#efeee9", "fill-extrusion-height": ["get", "height"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.94,
+      "fill-extrusion-color": "#3a3c43", "fill-extrusion-height": ["get", "height"], "fill-extrusion-base": 0, "fill-extrusion-opacity": 0.94,
     } });
     map.addLayer({ id: "bld-line", type: "line", source: "bld", paint: { "line-color": INK, "line-width": 0.6, "line-opacity": 0.55 } });
     map.addLayer({ id: "tasks", type: "circle", source: "tasks", paint: {
       "circle-radius": 7,
-      "circle-color": ["interpolate", ["linear"], ["get", "wbgt"], RAMP_LO, "#ffffff", RAMP_HI, HEAT],
+      "circle-color": ["interpolate", ["linear"], ["get", "wbgt"], RAMP_LO, INK3, RAMP_HI, HEAT],
       "circle-stroke-color": INK,
       "circle-stroke-width": ["case", ["get", "worked"], 3, 1],
       "circle-pitch-alignment": "map",
@@ -629,12 +754,7 @@
     const wrap = document.querySelector(".mapwrap");
     map.on("mousemove", "tasks", (e) => {
       map.getCanvas().style.cursor = "pointer";
-      const t = tasksById[e.features[0].properties.id];
-      fillTip(tip, t.name, [
-        [C.tipClass, C.cls[t.cls] || t.cls],
-        [C.tipHeat, C.deg(t.wbgt[slot])],
-        [C.tipShade, `${Math.round(t.shade[slot] * 100)}%`],
-      ]);
+      fillTip(tip, tasksById[e.features[0].properties.id], slot);
       placeTip(tip, wrap.getBoundingClientRect(), e.point.x, e.point.y);
     });
     map.on("mouseleave", "tasks", () => { map.getCanvas().style.cursor = ""; tip.hidden = true; });

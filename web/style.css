@@ -1,16 +1,20 @@
-/* Engineering-drawing look for the shade page: paper, ink hairlines, two accents. */
+/* Engineering-drawing look for the shade page on a dark ground: light ink hairlines, two accents. */
 
 :root {
-  --paper: #fafaf7;
-  --ink: #1a1a18;
-  --ink-2: #55554f;
-  --ink-3: #8b8b84;
-  --hair: #d6d4cc;
-  --hair-2: #e9e8e2;
-  --ban: #ebeae5;
-  --heat: #e4572e;
-  --shade: #2c6e9b;
-  --ground: #f1f0eb;
+  color-scheme: dark;
+  /* Contrast on --paper: ink 15.8, ink-2 7.9, ink-3 3.7, hair 3.3, hair-2 3.1, heat 6.7, shade 7.5.
+     ink-3 is for mono labels and marks only, never body text. */
+  --paper: #0e0f12;
+  --ink: #ebe9e2;
+  --ink-2: #a8a69e;
+  --ink-3: #6e6d67;
+  --hair: #64656b;
+  --hair-2: #5f6066;
+  --ban: #17181c;
+  --heat: #ff6a3d;
+  --shade: #5aa9e6;
+  --ground: #121317;
+  --veil: rgba(14, 15, 18, 0.9);
   --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "Geist Mono", ui-monospace, "SF Mono", Consolas, monospace;
   --pad: 32px;
@@ -60,10 +64,12 @@ button { font: inherit; color: inherit; }
 
 .mapwrap { position: relative; border-right: 1px solid var(--hair); background: var(--ground); min-height: 0; }
 #map { position: absolute; inset: 0; }
-.maplibregl-ctrl-attrib { font: 10px/1.4 var(--sans); background: rgba(250, 250, 247, 0.8) !important; }
+.maplibregl-ctrl-attrib { font: 10px/1.4 var(--sans); background: var(--veil) !important; color: var(--ink-2); }
+.maplibregl-ctrl-attrib a { color: var(--ink-2); }
+.maplibregl-ctrl-attrib-button { filter: invert(1); }
 
 .compass { position: absolute; top: 20px; right: 20px; width: 80px; height: 80px; pointer-events: none; }
-.compass .ring { fill: rgba(250, 250, 247, 0.85); stroke: var(--ink); stroke-width: 0.75; }
+.compass .ring { fill: var(--veil); stroke: var(--ink); stroke-width: 0.75; }
 .compass .tick { stroke: var(--ink); stroke-width: 0.75; }
 .compass .nlabel { font: 500 8px var(--mono); text-anchor: middle; fill: var(--ink); }
 .compass .sunline { stroke: var(--heat); stroke-width: 1.25; }
@@ -80,33 +86,45 @@ button { font: inherit; color: inherit; }
 .tb-v { font-size: 12px; }
 
 .legend {
-  position: absolute; left: 20px; top: 20px; max-width: 280px; background: rgba(250, 250, 247, 0.92);
+  position: absolute; left: 20px; top: 20px; max-width: 280px; background: var(--veil);
   border: 1px solid var(--hair); padding: 10px 12px; font-size: 11.5px; color: var(--ink-2);
 }
 .legend p { margin: 0 0 6px; }
 .ramp { display: flex; align-items: center; gap: 8px; font-size: 10px; }
-.ramp i { flex: 1; height: 6px; border: 1px solid var(--ink); background: linear-gradient(90deg, #fff, var(--heat)); }
+.ramp i { flex: 1; height: 6px; border: 1px solid var(--ink); background: linear-gradient(90deg, var(--ink-3), var(--heat)); }
 
 .tip {
   position: absolute; pointer-events: none; z-index: 5; background: var(--paper);
   border: 1px solid var(--ink); padding: 8px 10px; font-size: 12px; min-width: 180px;
 }
-.tip b { font-weight: 500; display: block; margin-bottom: 4px; }
-.tip .row { white-space: nowrap; display: flex; justify-content: space-between; gap: 16px; color: var(--ink-2); }
-.tip .row span:last-child { color: var(--ink); font-family: var(--mono); }
+.tip { width: 300px; }
+.tip b { font-weight: 500; display: block; }
+.tip .sub { color: var(--ink-2); margin-bottom: 6px; }
+.tip p { margin: 0 0 4px; color: var(--ink-2); }
+.tip p:last-child { margin-bottom: 0; }
+.tip .over { color: var(--heat); }
 
 /* Right panel */
 .panel { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 24px var(--pad) 16px; }
 .pitch { margin: 0 0 20px; font-size: 14px; line-height: 1.55; max-width: 62ch; }
 .pitch b { font-weight: 500; }
 
-.kpis { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--hair); }
+.kpis { display: grid; grid-template-columns: repeat(var(--tiles, 4), minmax(0, 1fr)); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--hair); }
 .kpi { padding: 14px 14px 16px; border-left: 1px solid var(--hair); }
 .kpi:first-child { border-left: 0; padding-left: 0; }
 .kpi .lab { font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .lab sup { font: 400 9px/0 var(--mono); margin-left: 2px; }
+.kpi .lab sup a { color: var(--ink-2); text-decoration: none; padding: 0 1px; }
+.kpi .lab sup a:hover { color: var(--ink); text-decoration: underline; }
 .kpi .val { font: 400 34px/1.1 var(--mono); letter-spacing: -0.03em; margin: 8px 0 8px; white-space: nowrap; }
 .kpi .val small { font-size: 13px; letter-spacing: 0; color: var(--ink-2); margin-left: 4px; }
 .kpi .val.bad { color: var(--heat); }
+/* Five tiles share 576 px at 1440 wide, so the big numbers and padding shrink and labels wrap. */
+.kpis.five .kpi { padding: 12px 10px 14px; }
+.kpis.five .kpi:first-child { padding-left: 0; }
+.kpis.five .lab { white-space: normal; min-height: 2.7em; line-height: 1.35; }
+.kpis.five .val { font-size: 26px; }
+.kpis.five .val small { font-size: 12px; margin-left: 2px; }
 .kpi .say { font-size: 12px; color: var(--ink-2); margin: 0; line-height: 1.4; min-height: 5.6em; }
 
 .tl-head { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 10px; gap: 16px; }
@@ -122,7 +140,7 @@ button { font: inherit; color: inherit; }
 .tl text { font: 400 10px var(--mono); fill: var(--ink-2); }
 .tl .wname { font: 400 11px var(--sans); fill: var(--ink); }
 .tl .grp { font: 500 9.5px var(--sans); fill: var(--ink-3); letter-spacing: 0.04em; }
-.tl .runlab { font: 500 8.5px var(--mono); fill: var(--paper); pointer-events: none; }
+.tl .runlab { font: 500 8.5px var(--mono); pointer-events: none; }
 .tl .layer { transition: opacity 300ms ease; }
 .tl .bar-g rect { transition: opacity 150ms; }
 .tl.focus .bar-g rect:not(.on) { opacity: 0.18; }
@@ -153,7 +171,36 @@ button { font: inherit; color: inherit; }
 .strip-note { margin: 0; font-size: 11.5px; color: var(--ink-2); line-height: 1.4; }
 
 .fallback-note {
-  position: absolute; right: 20px; bottom: 20px; font-size: 11px; color: var(--ink-3);
+  position: absolute; right: 20px; bottom: 20px; font-size: 11px; color: var(--ink-2);
   background: var(--paper); border: 1px solid var(--hair); padding: 4px 8px;
 }
 .plot-label { font-size: 10px; color: var(--ink); background: var(--paper); padding: 0 4px; margin-bottom: 2px; letter-spacing: 0.04em; }
+
+/* Header links, the sources sheet and the figure overlay */
+.links { display: flex; gap: 20px; margin-left: auto; margin-right: 24px; }
+.links button { background: none; border: 0; padding: 4px 0; cursor: pointer; color: var(--ink-2); border-bottom: 1px solid transparent; }
+.links button:hover, .links button[aria-expanded="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.links button:focus-visible { outline: 1px solid var(--heat); outline-offset: 2px; }
+
+.sheet {
+  position: fixed; top: 56px; right: 0; bottom: 96px; width: 640px; z-index: 20; overflow-y: auto;
+  background: var(--paper); border-left: 1px solid var(--hair); padding: 24px var(--pad);
+}
+.sheet[hidden] { display: none; }
+.sheet h2 { font-size: 13px; margin-bottom: 8px; }
+.sheet > p { color: var(--ink-2); margin: 0 0 16px; }
+.sheet ol { margin: 0; padding: 0; list-style: none; counter-reset: src; }
+.sheet li { counter-increment: src; display: grid; grid-template-columns: 28px 1fr; padding: 12px 0; border-top: 1px solid var(--hair); line-height: 1.5; }
+.sheet li::before { content: counter(src); font: 400 12px/1.5 var(--mono); color: var(--ink-2); }
+.sheet li b { font-weight: 500; display: block; }
+.sheet li span { color: var(--ink-2); }
+
+.overlay { position: fixed; inset: 0; z-index: 30; background: rgba(14, 15, 18, 0.82); display: grid; place-items: center; }
+.overlay[hidden] { display: none; }
+.fig { background: var(--paper); border: 1px solid var(--hair); padding: 20px; width: 682px; }
+.fig-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+.fig-head button { background: none; border: 0; color: var(--ink-2); cursor: pointer; padding: 0; }
+.fig-head button:hover { color: var(--ink); }
+/* The figure page is about 645 px tall. Shorter screens get a scroll bar inside the frame. */
+.fig iframe { display: block; width: 640px; height: min(660px, calc(100vh - 200px)); border: 0; background: var(--ground); }
+.fig p { margin: 12px 0 0; color: var(--ink-2); max-width: 64ch; }
