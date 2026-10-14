@@ -30,15 +30,17 @@ def sun_position(lat, lon, dt_utc):
     return az % 360, el
 
 
-def slot_time(s):
+def slot_time(s, day=DAY):
     """Local start time of slot s."""
-    return DAY.replace(hour=5) + timedelta(minutes=15 * s)
+    return day.replace(hour=5) + timedelta(minutes=15 * s)
 
 
-def sun_table(lat=LAT, lon=LON):
+def sun_table(lat=LAT, lon=LON, date=None):
+    """Sun at each slot midpoint. date is an ISO day string, default the demo day."""
+    day = datetime.fromisoformat(date).replace(tzinfo=TZ) if date else DAY
     out = []
     for s in range(N_SLOTS):
-        mid = (slot_time(s) + timedelta(minutes=7.5)).astimezone(timezone.utc)
+        mid = (slot_time(s, day) + timedelta(minutes=7.5)).astimezone(timezone.utc)
         az, el = sun_position(lat, lon, mid)
         out.append({"slot": s, "azimuth": round(az, 1), "elevation": round(el, 1)})
     return out

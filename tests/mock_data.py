@@ -25,6 +25,19 @@ LIMITS = {  # thresholds for 100, 75, 50, 25 percent work
 }
 LOADS = [12, 16, 24, 48]
 
+SOURCES = [
+    {"key": "liljegren2008", "short": "Liljegren WBGT model",
+     "citation": "Liljegren JC, Carhart RA, Lawday P, Tschopp S, Sharp R (2008). Modeling the wet bulb globe temperature using standard meteorological measurements. Journal of Occupational and Environmental Hygiene 5(10):645-655."},
+    {"key": "brimicombe2022", "short": "thermofeel library",
+     "citation": "Brimicombe C, Di Napoli C, Quintino T, Pappenberger F, Cornforth R, Cloke HL (2022). thermofeel: a python thermal comfort indices library. SoftwareX 18:101005."},
+    {"key": "niosh2016", "short": "NIOSH heat criteria",
+     "citation": "NIOSH (2016). Criteria for a recommended standard: occupational exposure to heat and hot environments. DHHS (NIOSH) Publication 2016-106."},
+    {"key": "garzon2017", "short": "WBGT limit validation",
+     "citation": "Garzon-Villalba XP, Wu Y, Ashley CD, Bernard TE (2017). Ability to discriminate between sustainable and unsustainable heat stress exposures, part 1: WBGT exposure limits. Annals of Work Exposures and Health 61(6):611-620."},
+    {"key": "malchaire2001", "short": "Predicted heat strain model",
+     "citation": "Malchaire J, Piette A, Kampmann B, Mehnert P, Gebhardt H, Havenith G, den Hartog E, Holmer I, Parsons K, Alfano G, Griefahn B (2001). Development and validation of the predicted heat strain model. Annals of Occupational Hygiene 45(2):123-135."},
+]
+
 # Hourly anchors 05:00..20:00 from the spec's weather shape.
 TA = [32, 33, 34, 35.5, 37, 39, 40.5, 41.5, 42, 42.6, 43, 42, 41, 40, 38, 36]
 RH = [62, 58, 54, 49, 44, 40, 36, 33, 31, 29, 28, 32, 36, 39, 42, 45]
@@ -171,8 +184,18 @@ def main():
             wbgt.append(round(v, 1))
             load.append(load_for(v, cls))
         lon, lat = to_ll(x, y)
+        # Rough stand-ins for the NIOSH minutes per hour and the PHS run length, so the page has both fields.
+        work_min = [{12: 60, 16: 45, 24: 30, 48: 15}.get(ld, 0) for ld in load]
+        slope = {"light": 40, "moderate": 25, "heavy": 15, "very_heavy": 10}[cls]
+        run_min = [240 if v < 29 else max(0, min(240, int((35 - v) * slope))) for v in wbgt]
         tasks.append({"id": f"T{i + 1:02d}", "name": nm, "lon": lon, "lat": lat, "cls": cls, "crew": crew,
-                      "slots": slots, "trade": trade, "after": after, "shade": shade, "wbgt": wbgt, "load": load})
+                      "slots": slots, "trade": trade, "after": after, "shade": shade, "wbgt": wbgt, "load": load,
+                      "work_min": work_min, "run_min": run_min})
+    for w in weather:
+        sr = 0.15 * w["ghi"] / 1000
+        ta, rh, ws = w["ta"], w["rh"], w["wind"]
+        w["wbgt_rest"] = round(0.735 * ta + 0.0374 * rh + 0.00292 * ta * rh + 7.619 * sr - 4.557 * sr * sr
+                               - 0.0572 * ws - 4.064, 1)
 
     roster = [("Rafiq", "steel"), ("Imran", "steel"), ("Sanjay", "steel"), ("Khalid", "steel"), ("Anil", "steel"),
               ("Bilal", "concrete"), ("Omar", "concrete"), ("Suresh", "concrete"), ("Yousef", "concrete"),
@@ -243,6 +266,19 @@ def main():
                         tot += 49 if ld is None else ld
                 if tot > 48:
                     viol.update((wi, s) for s in range(s0, s0 + 4) if assign[wi][s])
+        longest, over = 0, 0
+        for row in assign:
+            s = 0
+            while s < N:
+                if not row[s]:
+                    s += 1
+                    continue
+                s0 = s
+                while s < N and row[s] == row[s0]:
+                    s += 1
+                    if (s - s0) * 15 > by_id[row[s0]]["run_min"][s0]:
+                        over += 1
+                longest = max(longest, (s - s0) * 15)
         metrics = {
             "overtime_hours": sum(1 for _, s in worked if s >= SHIFT_END) / 4,
             "unscheduled_hours": sum(left[t["id"]] * t["crew"] for t in tasks) / 4,
@@ -250,6 +286,8 @@ def main():
             "tasks_done_by_17": sum(1 for t in tasks if left[t["id"]] == 0 and done_at[t["id"]] <= SHIFT_END),
             "peak_wbgt_worked": max(by_id[assign[wi][s]]["wbgt"][s] for wi, s in worked),
             "mean_shade_worked": round(sum(by_id[assign[wi][s]]["shade"][s] for wi, s in worked) / len(worked), 3),
+            "longest_run_min": longest,
+            "runs_over_phs": over,
         }
         scenarios[key] = {"label": label, "metrics": metrics, "assign": assign}
         print(key, metrics)
@@ -257,7 +295,8 @@ def main():
     data = {
         "meta": {"site": "Plot 7 podium", "city": "Dubai", "date": "2026-07-15", "tz": "+04:00",
                  "center": [LON0, LAT0], "slot_minutes": 15, "first_slot": "05:00",
-                 "shift_end_slot": SHIFT_END, "ban_slots": [30, 39], "n_slots": N},
+                 "shift_end_slot": SHIFT_END, "ban_slots": [30, 39], "n_slots": N,
+                 "weather_source": "Typical clear July day, hand written", "sources": SOURCES},
         "weather": weather, "sun": suns, "buildings": buildings, "shadows": shadows,
         "tasks": tasks, "workers": workers, "scenarios": scenarios,
     }

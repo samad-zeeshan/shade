@@ -43,3 +43,23 @@ def test_metrics_counts_violation_and_overtime():
     assert m["overtime_hours"] == 0.25
     assert m["tasks_done_by_17"] == 0
     assert m["peak_wbgt_worked"] == 31.0
+
+
+def test_run_cap_one_slot():
+    # One worker, one task of 3 slots, cap 1: the worker may never do two slots in a row on it.
+    tasks = [{"id": "A", "crew": 1, "slots": 3, "trade": "steel", "after": []}]
+    workers = [{"id": "W1", "trades": ["steel"]}]
+    caps = [[1] * 8]
+    r = solve(tasks, workers, [[12] * 8], set(), n_slots=8, shift_end=8, time_limit=5, caps=caps)
+    row = r["assign"][0]
+    assert row.count("A") == 3
+    assert all(not (row[s] and row[s + 1]) for s in range(7))
+    m = metrics(r["assign"], tasks, [[12] * 8], [[30.0] * 8], [[0.0] * 8], shift_end=8, caps=caps)
+    assert m["runs_over_phs"] == 0 and m["longest_run_min"] == 15
+
+
+def test_metrics_flag_long_runs():
+    tasks = [{"id": "A", "crew": 1, "slots": 3, "trade": "steel", "after": []}]
+    assign = [["A", "A", "A", None]]
+    m = metrics(assign, tasks, [[12] * 4], [[30.0] * 4], [[0.0] * 4], shift_end=4, caps=[[1] * 4])
+    assert m["longest_run_min"] == 45 and m["runs_over_phs"] == 3

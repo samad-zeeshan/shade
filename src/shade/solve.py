@@ -12,11 +12,15 @@ from shade.limits import BUDGET
 WINDOW = 4  # slots in a rolling hour
 
 
-def solve(tasks, workers, loads, ban, n_slots=60, shift_end=48, time_limit=60.0):
-    """loads[t][s] is the heat load or None (forbidden). loads=None turns the heat rule off."""
+def solve(tasks, workers, loads, ban, n_slots=60, shift_end=48, time_limit=60.0, caps=None):
+    """loads[t][s] is the heat load or None (forbidden). loads=None turns the heat rule off.
+
+    caps[t][s] is the longest run in slots that may start at s. caps=None turns the run rule off.
+    """
     m = cp_model.CpModel()
     T, W, S = range(len(tasks)), range(len(workers)), range(n_slots)
-    ok = lambda t, s: s not in ban and (loads is None or loads[t][s] is not None)
+    ok = lambda t, s: (s not in ban and (loads is None or loads[t][s] is not None)
+                       and (caps is None or caps[t][s] > 0))
 
     # Only create x where the trade matches and the slot is open, which keeps the model small.
     x = {(w, t, s): m.new_bool_var(f"x{w}_{t}_{s}")
@@ -59,6 +63,14 @@ def solve(tasks, workers, loads, ban, n_slots=60, shift_end=48, time_limit=60.0)
                 if terms:
                     m.add(sum(terms) <= BUDGET)
 
+    # Run length: no worker stays on one task for cap + 1 slots in a row, using the cap where the run starts.
+    if caps is not None:
+        for (w, t, s) in list(x):
+            c = caps[t][s]
+            window = [x.get((w, t, k)) for k in range(s, s + c + 1)]
+            if s + c < n_slots and all(v is not None for v in window):
+                m.add(sum(window) <= c)
+
     overtime = sum(v for (w, t, s), v in x.items() if s >= shift_end)
     # Weights rank goals: finish all work first, then avoid overtime, then finish early.
     m.minimize(1000 * sum(u) + 10 * overtime + sum(last))
@@ -66,6 +78,7 @@ def solve(tasks, workers, loads, ban, n_slots=60, shift_end=48, time_limit=60.0)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = time_limit
     solver.parameters.num_workers = 8
+    solver.parameters.random_seed = 7
     t0 = time.perf_counter()
     status = solver.solve(m)
     wall = time.perf_counter() - t0
@@ -80,15 +93,29 @@ def solve(tasks, workers, loads, ban, n_slots=60, shift_end=48, time_limit=60.0)
             "bound": solver.best_objective_bound, "n_x": len(x), "assign": assign}
 
 
-def metrics(assign, tasks, loads, wbgt, shade, shift_end=48):
-    """Score an assignment with the true heat. loads/wbgt/shade are indexed [task][slot]."""
+def metrics(assign, tasks, loads, wbgt, shade, shift_end=48, caps=None):
+    """Score an assignment with the true heat. loads/wbgt/shade/caps are indexed [task][slot]."""
     index = {task["id"]: t for t, task in enumerate(tasks)}
     n_slots = len(assign[0])
     done = [0] * len(tasks)
     late = [False] * len(tasks)
-    overtime = violation = 0
+    overtime = violation = over_phs = longest = 0
     worked = []
     for row in assign:
+        run = 0
+        for s, tid in enumerate(row):
+            run = run + 1 if tid is not None and s and row[s - 1] == tid else int(tid is not None)
+            longest = max(longest, run)
+        if caps is not None:
+            # Same rule as the solver: a run of cap + 1 slots from s on one task breaks the cap at s.
+            broken = set()
+            for s, tid in enumerate(row):
+                if tid is None:
+                    continue
+                c = caps[index[tid]][s]
+                if s + c < n_slots and all(row[k] == tid for k in range(s, s + c + 1)):
+                    broken.update(range(s, s + c + 1))
+            over_phs += len(broken)
         bad = set()
         cost = []
         for s, tid in enumerate(row):
@@ -116,4 +143,6 @@ def metrics(assign, tasks, loads, wbgt, shade, shift_end=48):
         "tasks_done_by_17": finished,
         "peak_wbgt_worked": max((wbgt[t][s] for t, s in worked), default=None),
         "mean_shade_worked": round(sum(shade[t][s] for t, s in worked) / len(worked), 2) if worked else None,
+        "longest_run_min": longest * 15,
+        "runs_over_phs": over_phs,
     }

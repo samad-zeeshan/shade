@@ -1,22 +1,27 @@
-"""Work fraction lookup and its twelfths-of-an-hour load."""
-from shade.limits import BUDGET, load
+"""NIOSH REL as a 1-hour average, turned into a load per slot."""
+import math
+
+from shade.limits import BUDGET, M, M_REST, WORK_MIN, load, rel
+
+
+def test_rel_formula():
+    assert math.isclose(rel(300), 56.7 - 11.5 * math.log10(300))
+    assert 28.1 < rel(300) < 28.3
+
+
+def test_full_rate_when_cool():
+    assert load(25.0, 25.0, "very_heavy") == 12
+    assert WORK_MIN[load(25.0, 25.0, "light")] == 60
 
 
 def test_worked_check():
-    assert load(29.5, "moderate") == 24  # 50 percent column
-    assert BUDGET // load(29.5, "moderate") == 2
-    assert load(30.2, "very_heavy") is None
-    assert load(29.5, "very_heavy") == 48  # 25 percent column
-    assert BUDGET // 48 == 1
-
-
-def test_full_rate_and_boundaries():
-    assert load(25.0, "light") == 12
-    assert load(31.0, "light") == 12
-    assert load(31.1, "light") == 24  # 75 percent shares 31.0, so the next step is 50
-    assert load(20.0, "heavy") == 16  # heavy never gets 100 percent
+    # Moderate work at 30 C WBGT in sun, rest at 27 C in shade: half the hour is the most that fits.
+    wbgt_twa = 0.5 * 30 + 0.5 * 27
+    assert wbgt_twa <= rel(0.5 * M["moderate"] + 0.5 * M_REST)
+    assert load(30.0, 27.0, "moderate") == 24
+    assert BUDGET // 24 == 2
 
 
 def test_forbidden():
-    assert load(32.6, "light") is None
-    assert load(31.6, "moderate") is None
+    assert load(34.4, 32.0, "heavy") is None
+    assert WORK_MIN[None] == 0
