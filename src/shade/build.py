@@ -27,9 +27,9 @@ GRID_STEP_M = 6
 GRID_MAX_POINTS = 500
 GRID_BUFFER_M = 25
 LABELS = {
-    "ban_only": "Blanket ban",
-    "sun_blind": "Heat limits, one site temperature",
-    "shade_aware": "Heat limits, per-spot shade",
+    "ban_only": "Ban only",
+    "sun_blind": "Heat plan",
+    "shade_aware": "Shade plan",
 }
 SOURCES = [
     {"key": "liljegren2008", "short": "Liljegren WBGT model",

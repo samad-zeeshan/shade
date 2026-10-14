@@ -204,9 +204,9 @@ def main():
     workers = [{"id": f"W{i + 1:02d}", "name": n, "trades": [t]} for i, (n, t) in enumerate(roster)]
 
     scen = {
-        "ban_only": ("Blanket ban", None),
-        "sun_blind": ("Heat limits, one site temperature", "blind"),
-        "shade_aware": ("Heat limits, per-spot shade", "true"),
+        "ban_only": ("Ban only", None),
+        "sun_blind": ("Heat plan", "blind"),
+        "shade_aware": ("Shade plan", "true"),
     }
     by_id = {t["id"]: t for t in tasks}
     scenarios = {}
