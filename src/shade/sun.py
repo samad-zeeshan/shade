@@ -4,7 +4,9 @@ Solar position from the NOAA solar calculator equations.
 import math
 from datetime import datetime, timedelta, timezone
 
-LAT, LON = 25.1860, 55.2650
+from shade.scenario import SITE
+
+LON, LAT = SITE["center"]
 TZ = timezone(timedelta(hours=4))
 DAY = datetime(2026, 7, 15, tzinfo=TZ)
 N_SLOTS = 60

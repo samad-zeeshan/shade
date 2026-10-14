@@ -1,5 +1,5 @@
 """
-Fetch one day of hourly weather from Open-Meteo in the same shape as data/weather.json.
+Fetch one day of hourly weather from Open-Meteo in the same shape as data/weather/<site>/<date>.json.
 
 Recent and future days come from the forecast endpoint, older days from the ERA5 archive.
 """

@@ -8,7 +8,7 @@ import pytest
 from shade.sun import sun_table
 from shade.wbgt import load_weather, wbgt_rest, wbgt_table
 
-WEATHER = Path(__file__).resolve().parents[1] / "data" / "weather.json"
+WEATHER = Path(__file__).parent / "fixtures" / "weather_2026-07-15.json"
 
 
 @pytest.fixture(scope="module")

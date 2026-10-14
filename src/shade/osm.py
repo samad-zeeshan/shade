@@ -1,8 +1,9 @@
 """
-Fetch building footprints for the site from Overpass and save data/buildings.geojson.
+Fetch building footprints around a site from Overpass and save data/buildings/<site id>.geojson.
 
-Run once with network access: uv run python -m shade.osm
+Run once with network access: uv run python -m shade.osm --site sites/plot7.json
 """
+import argparse
 import json
 import re
 from pathlib import Path
@@ -11,13 +12,13 @@ import httpx
 from pyproj import Transformer
 from shapely.geometry import Polygon
 
-CENTER_LAT, CENTER_LON = 25.1860, 55.2650
-DLAT, DLON = 0.0035, 0.0040
+from shade.scenario import load_site
+
 SERVERS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
-OUT = Path(__file__).resolve().parents[2] / "data" / "buildings.geojson"
+OUT_DIR = Path(__file__).resolve().parents[2] / "data" / "buildings"
 MIN_AREA_M2 = 20.0
 
 QUERY = """[out:json][timeout:60];
@@ -26,8 +27,9 @@ QUERY = """[out:json][timeout:60];
 out geom tags;"""
 
 
-def fetch() -> dict:
-    q = QUERY.format(s=CENTER_LAT - DLAT, n=CENTER_LAT + DLAT, w=CENTER_LON - DLON, e=CENTER_LON + DLON)
+def fetch(site: dict) -> dict:
+    (lon, lat), (dlon, dlat) = site["center"], site["bbox_half_deg"]
+    q = QUERY.format(s=lat - dlat, n=lat + dlat, w=lon - dlon, e=lon + dlon)
     last = None
     for url in SERVERS:
         try:
@@ -57,9 +59,13 @@ def ring_of(geometry: list[dict]) -> list[tuple[float, float]]:
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(description="Download building footprints for one site.")
+    ap.add_argument("--site", default="sites/plot7.json")
+    site = load_site(ap.parse_args().site)
+    out = OUT_DIR / f"{site['id']}.geojson"
     to_m = Transformer.from_crs(4326, 32640, always_xy=True).transform
     features = []
-    for el in fetch()["elements"]:
+    for el in fetch(site)["elements"]:
         if el["type"] == "way":
             ring = ring_of(el.get("geometry", []))
         else:
@@ -77,10 +83,10 @@ def main() -> None:
             "properties": {"height": height_of(tags), "name": tags.get("name", "")},
             "geometry": {"type": "Polygon", "coordinates": [[list(p) for p in poly.exterior.coords]]},
         })
-    OUT.parent.mkdir(exist_ok=True)
-    OUT.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
     hs = [f["properties"]["height"] for f in features]
-    print(f"{len(features)} buildings, max height {max(hs)} m -> {OUT}")
+    print(f"{len(features)} buildings, max height {max(hs)} m -> {out}")
 
 
 if __name__ == "__main__":

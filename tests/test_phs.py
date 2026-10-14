@@ -5,7 +5,7 @@ from shade.phs import CAP_MIN, run_minutes, run_table
 from shade.sun import sun_table
 from shade.wbgt import load_weather, wbgt_table
 
-WEATHER = Path(__file__).resolve().parents[1] / "data" / "weather.json"
+WEATHER = Path(__file__).parent / "fixtures" / "weather_2026-07-15.json"
 
 
 def test_light_at_six_is_unlimited():
