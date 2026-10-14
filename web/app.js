@@ -68,7 +68,8 @@
       csvRest: "rest",
       loadFail: "The schedule file did not load. The page has no data to show.",
       fallback: "The street map did not load. The page shows only the buildings.",
-      plotLabel: "Plot 7",
+      // Site names start with the plot, for example "Plot 12 car park".
+      plotLabel: (site) => site.split(" ").slice(0, 2).join(" "),
       play: "Play the day", pause: "Pause",
       tbTime: "Time", tbSun: "Sun height", tbAir: "Air temperature", tbHeat: "Average heat index on site", tbWeather: "Weather",
       weather: (src) => (src && src.startsWith("Open-Meteo archive") ? "Open-Meteo, past weather"
@@ -871,7 +872,7 @@
     const north = plot.geometry.coordinates[0].reduce((a, c) => (c[1] > a[1] ? c : a));
     const lab = document.createElement("div");
     lab.className = "plot-label mono";
-    lab.textContent = C.plotLabel;
+    lab.textContent = C.plotLabel(D.meta.site);
     new maplibregl.Marker({ element: lab, anchor: "bottom" }).setLngLat(north).addTo(map);
     map.addLayer({ id: "shadow", type: "fill", source: "shadow", paint: { "fill-color": SHADE, "fill-opacity": 0.22, "fill-antialias": false } });
     map.addLayer({ id: "bld-3d", type: "fill-extrusion", source: "bld", paint: {
