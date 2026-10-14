@@ -262,3 +262,140 @@ Build against the schema. Until the real `web/data.json` exists, write `tests/mo
 ## Out of scope
 
 Live weather fetch, live Overpass at demo time, clothing adjustment factors, unacclimatised workers, per-worker acclimatisation, mobile layout, a backend server, user editing of tasks. Each is one sentence in the README under "Not built".
+
+
+---
+
+# Addendum 1: peer-reviewed physics, exposure duration, live weather, dark page
+
+Goal: every number the page shows traces to a peer-reviewed paper or a national criteria document. The page says, for each spot and hour, how many minutes a crew may work and how long one run may last. The page is dark only. All visible text follows ASD-STE100. Dependencies `thermofeel` and `pythermalcomfort` are installed with `uv add`.
+
+## Sources (cite verbatim in code comments, README and the page)
+
+1. Liljegren JC, Carhart RA, Lawday P, Tschopp S, Sharp R (2008). Modeling the wet bulb globe temperature using standard meteorological measurements. Journal of Occupational and Environmental Hygiene 5(10):645-655. The WBGT model.
+2. Brimicombe C, Di Napoli C, Quintino T, Pappenberger F, Cornforth R, Cloke HL (2022). thermofeel: a python thermal comfort indices library. SoftwareX 18:101005. The implementation of source 1 used here: `thermofeel.calculate_wbgt_liljegren`.
+3. NIOSH (2016). Criteria for a recommended standard: occupational exposure to heat and hot environments. DHHS (NIOSH) Publication 2016-106, chapter 8, page 125. REL [C WBGT] = 56.7 - 11.5 log10 M; RAL = 59.9 - 14.1 log10 M; M in watts. Exposure and metabolic rate are 1-hour time-weighted averages.
+4. Garzon-Villalba XP, Wu Y, Ashley CD, Bernard TE (2017). Ability to discriminate between sustainable and unsustainable heat stress exposures, part 1: WBGT exposure limits. Annals of Work Exposures and Health 61(6):611-620. Validates limits of this form: odds ratio 2.5 per degree C, AUC 0.85.
+5. Malchaire J, Piette A, Kampmann B, Mehnert P, Gebhardt H, Havenith G, den Hartog E, Holmer I, Parsons K, Alfano G, Griefahn B (2001). Development and validation of the predicted heat strain model. Annals of Occupational Hygiene 45(2):123-135. The PHS model, standardised as ISO 7933, implemented in `pythermalcomfort.models.phs`. Gives minutes until rectal temperature reaches 38 C: `d_lim_t_re`.
+6. Ono and Tonouchi (2014) is removed. Its coefficients could not be verified.
+
+## Executor D (Opus): backend
+
+### wbgt.py: Liljegren via thermofeel
+
+`wbgt_table(shade_fractions, weather, sun)` calls `thermofeel.calculate_wbgt_liljegren(t2_k, rh, pressure, va, ssrd, fdir, cossza)` with numpy arrays, one call per task over all 60 slots. Inputs per slot s and shade fraction f:
+
+- `t2_k = ta + 273.15`; `rh` in percent; `pressure = weather[s].get("pressure", 1010.0)` hPa; `va = wind`.
+- `ssrd = ghi * (1 - f) + diffuse * f` where `diffuse = weather[s].get("dif", 0.15 * ghi)`.
+- `fdir` = direct fraction of ssrd: `direct * (1 - f) / ssrd` with `direct = weather[s].get("dir", 0.85 * ghi)`, 0 when ssrd is 0, clipped to 0..1.
+- `cossza = max(sin(elevation), 0.05)`; night (elevation <= 1): ssrd 0, fdir 0.
+- Output minus 273.15, one decimal.
+
+Also return a per-cell mean radiant temperature `tr` for PHS. If thermofeel exposes a globe temperature function (look for `calculate_bgt` or the Liljegren globe routine), use it and convert with ISO 7726 for a 150 mm black globe: `tr = ((tg + 273.15)^4 + 1.1e8 * v^0.6 * (tg - ta) / (0.95 * 0.15^0.4))^0.25 - 273.15`. Otherwise `tr = ta + 18 * (ssrd / 1000)` and say so in the report.
+
+Sanity bands (measured during planning: 29.3, 34.8, 32.0): 06:00 about 29; 13:00 sun 34 to 36; 13:00 shade 31.5 to 33.
+
+### weather.py (new): live weather from Open-Meteo
+
+`fetch(date, lat=LAT, lon=LON) -> dict` with httpx, GET `https://api.open-meteo.com/v1/forecast` with params `latitude, longitude, hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,shortwave_radiation,direct_radiation,diffuse_radiation,surface_pressure`, `wind_speed_unit=ms`, `timezone=Asia/Dubai`, `start_date=date`, `end_date=date`, timeout 20 s. Verified on 2026-10-14: the endpoint answers with these fields and needs no key. Return the same shape as `data/weather.json` with rows for hours 5..20 and extra keys `dir`, `dif`, `pressure`, plus `source: "Open-Meteo forecast, fetched <ISO timestamp>"`. Dates more than 16 days ahead or before 2022 are out of range: raise with a clear message. `load_weather` passes `dir`, `dif`, `pressure` through when present (interpolated like the others).
+
+`build.py` gains argparse: `--live YYYY-MM-DD` fetches, writes `data/weather.live.json`, uses it, and sets `meta.date` to that date and `meta.weather_source` to the fetch string. Default stays the hand-written July file with `meta.weather_source = "Typical clear July day, hand written"`. The sun table must take the date from the weather file (check `sun_table` signature; add a `date` parameter if it is fixed). Do not commit a live data.json; the committed demo stays the July day.
+
+### limits.py: NIOSH REL, 1-hour time-weighted average
+
+Metabolic rates per class: light 180 W, moderate 300 W, heavy 415 W, very_heavy 520 W. Resting rate 115 W. Rest happens in shade, so the rest WBGT for a slot is the WBGT at shade fraction 1.0 for that slot (compute once per slot, store in `weather[s].wbgt_rest`).
+
+For work fraction p in (1.0, 0.75, 0.5, 0.25):
+
+```
+wbgt_twa = p * wbgt_work + (1 - p) * wbgt_rest
+m_twa    = p * M_class  + (1 - p) * 115
+allowed  = wbgt_twa <= 56.7 - 11.5 * log10(m_twa)
+```
+
+The allowed fraction is the largest p that passes; none passes means forbidden. Encode as 12, 16, 24, 48, None as before. Keep the 48-per-4-slots rolling budget in the solver. Delete the ACGIH table. Report what each class gets at 06:00 and at 13:00 in sun and in shade.
+
+### phs.py (new): how long one run may last
+
+For each task and slot: `pythermalcomfort.models.phs(tdb=ta, tr=tr, v=wind, rh=rh, met=M/58.15, clo=0.5, posture="standing", duration=240, acclimatized=100, round_output=False)`; keep `d_lim_t_re` in whole minutes, floor, cap 240. If the function returns NaN because an input is outside the standard's range, clip inputs (tdb 15..50, tr up to 60, v 0..3, rh so that vapour pressure stays inside the range) and count the clips for the report.
+
+Run cap per cell: `run_cap = floor(d_lim_t_re / 15)` slots. 0 means forbidden in that slot. Solver constraint, for every worker w, task t and slot s with run_cap < 60: `sum_{k=0..run_cap} x[w,t,s+k] <= run_cap` (a run of run_cap + 1 consecutive slots on one task is not allowed), using the cap of the first slot of the window; also forbid x where run_cap == 0.
+
+Planning probes with a rough tr: moderate at 13:00 gives 17 min, heavy at 08:00 in shade 14 min, light at 06:00 unlimited. Expect the cap to bite on heavy tasks. If the cap drops shade_aware below 11 tasks done by 17:00, report and do not change scenario.py; the integrator decides.
+
+### data.json additions (schema otherwise unchanged)
+
+Per task: `work_min` (60 entries: 60, 45, 30, 15 or 0 from the NIOSH rule) and `run_min` (60 entries: `d_lim_t_re` whole minutes, 240 means no practical limit). Per weather slot: `wbgt_rest`. `meta.sources`: list of `{key, short, citation}` for sources 1 to 5, keys `liljegren2008, brimicombe2022, niosh2016, garzon2017, malchaire2001`, `short` a 3 to 6 word label. `meta.weather_source` as above. Remove `limits_source` and `wbgt_source`.
+
+Metrics: keep the six, add `longest_run_min` (longest consecutive run on one task by any worker, minutes) and `runs_over_phs` (count of worked slots that break the PHS cap, post hoc, same function for all three scenarios).
+
+Determinism: `random_seed = 7`, `num_workers = 8`. Note in the report that CP-SAT is not bit-reproducible across machines.
+
+### Tests
+
+Update test_wbgt and test_limits. Add test_phs (light at 06:00 returns 240; one forbidding case) and test_weather (parse a saved Open-Meteo response fixture into the weather shape, no network). test_solve gains a run-cap case: cap 1 slot means no two consecutive slots on one task for one worker. test_build asserts the new keys and array lengths. Extend `tests/mock_data.py` with `work_min`, `run_min`, `weather[].wbgt_rest`, `meta.sources`, `meta.weather_source`, the two new metrics.
+
+### README
+
+Replace the Sources paragraph with the numbered list above and one sentence each on what it supplies. Under the plan list add: "Each spot and hour has two limits. The first limit says how many minutes of each hour a crew may work there. It comes from the NIOSH rule. The second limit says how long one run may last before a rest. It comes from the PHS model." Add a "Live weather" section with the `--live` command and the note that Open-Meteo needs no key. Remove "live weather" from the "Not built" line.
+
+## Executor E (Opus): frontend
+
+Load the `frontend-design` plugin skill first. Develop against `tests/mock_data.py` (executor D extends it; if the new fields are not there yet, add them to the mock yourself with the same names) and verify against the real data.json when it lands.
+
+### Dark only
+
+Replace the paper palette with one dark palette and delete the light one. Suggested tokens: `--paper: #0e0f12`, `--ink: #ebe9e2`, `--ink-2: #a8a69e`, `--ink-3: #6e6d67`, `--hair: #2a2b30`, `--hair-2: #1c1d21`, `--ban: #17181c`, `--ground: #121317`, `--heat: #ff6a3d`, `--shade: #5aa9e6`. Basemap: OpenFreeMap `dark` style (`https://tiles.openfreemap.org/styles/dark`), keep the fallback. Shadow fill stays blue at low alpha on the dark ground; check the dot ramp reads against the dark map (ramp from `--ink-3` to `--heat`, not from white). Favicon strokes in `--ink`. Set `<meta name="color-scheme" content="dark">`. Every text and hairline must pass 4.5:1 contrast for body text and 3:1 for hairlines and mono labels; state the measured ratios in the report.
+
+### Tooltip: when and how long
+
+Map dot and timeline bar share one card. Lines in order, all from `copy()`:
+
+1. Task name; class in plain words (light work, moderate work, heavy work); crew size.
+2. "At 08:15 this spot is in shade. Heat index 29.4." Shade fraction over 0.5 is "in shade", 0.1 to 0.5 "in part shade", else "in full sun".
+3. From `work_min` and `run_min`: "A crew can work here for 45 minutes of this hour. One run can last 30 minutes. Then the crew rests in shade." If `work_min` is 0: "No work is permitted here at this time." If `run_min` >= 240: "One run has no time limit."
+4. "Next window: 15:45 to 19:00." The next span after the current slot where `work_min > 0`, or "There is no later window today."
+
+### Night-shift wording
+
+"Work left undone" becomes "Moved to the night shift": tile label, under-sentence, comparison line. Say once in the comparison line: "Work that does not fit in the day moves to a night shift. A night shift costs more and needs lights."
+
+### Reset and play
+
+Key `0` and `Home` jump to 07:00 and pause. Play at the last slot restarts from 05:00.
+
+### Sources panel
+
+A "Sources" link in the header opens a plain panel listing `meta.sources` as numbered citations, short label in bold. Close with Escape or the link. KPI tile labels get a superscript mono number linking to the source: over the heat limit 3 and 4; hottest spot 1 and 2; longest run 5.
+
+### Fifth tile
+
+Add "Longest single run" in minutes with the verdict from `runs_over_phs` ("Each run stopped before the body-heat limit." or "Some runs went past the body-heat limit.") only if five tiles fit at 1440 without wrapping. If not, show it instead of "Hottest spot worked" and keep hottest spot in the tooltip only.
+
+### Weather source line
+
+The title block gets a row "Weather" with `meta.weather_source` shortened to "Typical July day" or "Open-Meteo forecast".
+
+### Figure panel
+
+Executor F writes `web/hairline-tower.html`. Add a header link "How it works" that opens an overlay with that file in an iframe (width 640, height 520, no border) and one STE sentence under it: "Move the pointer across the sky. The shadow of the tower moves across the plot. Pegs in the shadow can work. Pegs in the sun must rest." Escape closes. If the file is not there yet, the link still works and the iframe shows nothing; do not block on it.
+
+### ASD-STE100 for every visible string
+
+Apply to each string in `copy()`, the README and the pitch: one topic per sentence; instructions at most 20 words, descriptions at most 25; active voice; imperative mood for instructions; present tense; keep articles; one approved word per meaning, used the same way everywhere (use "permit", not "allow" and "let"); no gerunds as verbs; write "do not", not "don't"; numbers as digits; no slang and no idiom. Keep the reader rule from the main spec: no technical noun the screen has not introduced.
+
+### Checks
+
+Zero console errors. Screenshots at 1440x900 of all three scenarios at 08:15 with a tooltip open, the sources panel, and the figure overlay. Keyboard: space, arrows, 1-2-3, 0, Home, Escape.
+
+## Executor F (Opus): the hairline figure
+
+Follow the `hairline-create` skill in `~/.claude/skills/hairline-create/` exactly (read SKILL.md, concepts.md, rules.md, the kernel index, both examples). Work in `web/fig/` so the built page lands at `web/fig/hairline-tower.html`; then copy it to `web/hairline-tower.html`. The concept is chosen:
+
+> **Tower.** A tapering tower stands at one corner of a square plot. On the plot stand eight pegs in an uneven cluster. The pointer is the sun: its x across the stage sets the hour from 06:00 to 18:00, and the tower's shadow, a dim plate on the ground, sweeps from west to east. Pegs inside the shadow stand up (they can work); pegs in the sun lean over (they must rest), staggered outward from the shadow's edge. The read-out says the hour, `08·15`, and `rest`. Rest pose: 08:00, a long shadow to the west covering three pegs, the nearest standing peg bright. Slider: tower height (range 18, 30, 44). Tour: 06:30, 09:00, 13:00, 16:30, then leave.
+
+Shadow length from height and hour: `len = h / tan(elevation)`, elevation from a simple sine over the day (peak 85 degrees at 12:30), azimuth from east to west; clamp length to the plot. Pegs test against their rest positions (rule 01). Lean is a tween per peg (rule 08), the shadow plate follows a spring. Run `look.mjs` until it exits 0, then answer `look.md` yourself. Report what you could not verify.
+
+## Integrator (Fable)
+
+Merge, `uv run pytest`, rebuild data.json, Playwright check, commit per concern, README, `docs/PITCH.md` (ninety seconds keyed to page actions), memory.

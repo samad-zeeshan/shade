@@ -13,7 +13,9 @@ dependencies = [
     "ortools>=9.15.6755",
     "pyproj>=3.8.0",
     "pytest>=9.1.1",
+    "pythermalcomfort>=3.8.0",
     "shapely>=2.2.0",
+    "thermofeel>=2.3.0",
 ]
 
 [build-system]
