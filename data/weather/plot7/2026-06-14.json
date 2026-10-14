@@ -1,0 +1,167 @@
+{
+ "date": "2026-06-14",
+ "tz": "+04:00",
+ "hourly": [
+  {
+   "hour": 5,
+   "ta_c": 29.5,
+   "rh_pct": 89,
+   "wind_ms": 1.21,
+   "ghi_wm2": 0.0,
+   "dir": 0.0,
+   "dif": 0.0,
+   "pressure": 1000.9
+  },
+  {
+   "hour": 6,
+   "ta_c": 29.1,
+   "rh_pct": 90,
+   "wind_ms": 0.72,
+   "ghi_wm2": 9.0,
+   "dir": 1.0,
+   "dif": 8.0,
+   "pressure": 1001.3
+  },
+  {
+   "hour": 7,
+   "ta_c": 30.5,
+   "rh_pct": 82,
+   "wind_ms": 0.6,
+   "ghi_wm2": 121.0,
+   "dir": 48.0,
+   "dif": 73.0,
+   "pressure": 1001.8
+  },
+  {
+   "hour": 8,
+   "ta_c": 32.9,
+   "rh_pct": 61,
+   "wind_ms": 1.17,
+   "ghi_wm2": 318.0,
+   "dir": 192.0,
+   "dif": 126.0,
+   "pressure": 1002.2
+  },
+  {
+   "hour": 9,
+   "ta_c": 35.8,
+   "rh_pct": 44,
+   "wind_ms": 0.87,
+   "ghi_wm2": 529.0,
+   "dir": 369.0,
+   "dif": 160.0,
+   "pressure": 1002.3
+  },
+  {
+   "hour": 10,
+   "ta_c": 37.0,
+   "rh_pct": 38,
+   "wind_ms": 1.1,
+   "ghi_wm2": 719.0,
+   "dir": 534.0,
+   "dif": 185.0,
+   "pressure": 1002.5
+  },
+  {
+   "hour": 11,
+   "ta_c": 37.9,
+   "rh_pct": 39,
+   "wind_ms": 1.66,
+   "ghi_wm2": 865.0,
+   "dir": 663.0,
+   "dif": 202.0,
+   "pressure": 1002.4
+  },
+  {
+   "hour": 12,
+   "ta_c": 37.9,
+   "rh_pct": 45,
+   "wind_ms": 2.44,
+   "ghi_wm2": 955.0,
+   "dir": 744.0,
+   "dif": 211.0,
+   "pressure": 1002.2
+  },
+  {
+   "hour": 13,
+   "ta_c": 38.1,
+   "rh_pct": 43,
+   "wind_ms": 3.08,
+   "ghi_wm2": 978.0,
+   "dir": 765.0,
+   "dif": 213.0,
+   "pressure": 1001.7
+  },
+  {
+   "hour": 14,
+   "ta_c": 38.3,
+   "rh_pct": 41,
+   "wind_ms": 3.59,
+   "ghi_wm2": 930.0,
+   "dir": 723.0,
+   "dif": 207.0,
+   "pressure": 1001.1
+  },
+  {
+   "hour": 15,
+   "ta_c": 37.1,
+   "rh_pct": 46,
+   "wind_ms": 4.7,
+   "ghi_wm2": 816.0,
+   "dir": 622.0,
+   "dif": 194.0,
+   "pressure": 1000.2
+  },
+  {
+   "hour": 16,
+   "ta_c": 37.1,
+   "rh_pct": 43,
+   "wind_ms": 4.65,
+   "ghi_wm2": 652.0,
+   "dir": 477.0,
+   "dif": 175.0,
+   "pressure": 999.8
+  },
+  {
+   "hour": 17,
+   "ta_c": 35.2,
+   "rh_pct": 53,
+   "wind_ms": 4.85,
+   "ghi_wm2": 456.0,
+   "dir": 308.0,
+   "dif": 148.0,
+   "pressure": 999.9
+  },
+  {
+   "hour": 18,
+   "ta_c": 34.3,
+   "rh_pct": 59,
+   "wind_ms": 3.63,
+   "ghi_wm2": 243.0,
+   "dir": 135.0,
+   "dif": 108.0,
+   "pressure": 1000.0
+  },
+  {
+   "hour": 19,
+   "ta_c": 33.5,
+   "rh_pct": 59,
+   "wind_ms": 2.29,
+   "ghi_wm2": 66.0,
+   "dir": 20.0,
+   "dif": 46.0,
+   "pressure": 1000.5
+  },
+  {
+   "hour": 20,
+   "ta_c": 33.3,
+   "rh_pct": 55,
+   "wind_ms": 1.9,
+   "ghi_wm2": 0.0,
+   "dir": 0.0,
+   "dif": 0.0,
+   "pressure": 1001.3
+  }
+ ],
+ "source": "Open-Meteo archive (ERA5), fetched 2026-10-14T17:13:16+00:00"
+}

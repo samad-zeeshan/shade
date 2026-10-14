@@ -1,0 +1,41 @@
+{
+ "id": "plot12",
+ "name": "Plot 12 car park",
+ "city": "Abu Dhabi",
+ "center": [54.3601, 24.492],
+ "bbox_half_deg": [0.004, 0.0035],
+ "plot_center": [54.360079, 24.491956],
+ "shift_end_slot": 48,
+ "ban_slots": [30, 39],
+ "plot": [[54.360451, 24.492498], [54.360792, 24.492103], [54.360611, 24.491968], [54.360526, 24.492056], [54.359781, 24.491522], [54.359892, 24.491394], [54.359775, 24.491316], [54.359415, 24.491766], [54.360451, 24.492498]],
+ "tasks": [
+  {"id": "T01", "name": "Survey podium levels", "lat": 24.491729, "lon": 54.359545, "cls": "light", "crew": 2, "slots": 6, "trade": "general", "after": []},
+  {"id": "T02", "name": "Place column cages", "lat": 24.491569, "lon": 54.359697, "cls": "moderate", "crew": 2, "slots": 6, "trade": "steel", "after": []},
+  {"id": "T03", "name": "Snag list, south bay", "lat": 24.491704, "lon": 54.359694, "cls": "light", "crew": 2, "slots": 6, "trade": "general", "after": []},
+  {"id": "T04", "name": "Crane-fed wall formwork", "lat": 24.492152, "lon": 54.360542, "cls": "heavy", "crew": 3, "slots": 4, "trade": "concrete", "after": []},
+  {"id": "T05", "name": "Fix anchor bolts", "lat": 24.492287, "lon": 54.36051, "cls": "moderate", "crew": 2, "slots": 6, "trade": "steel", "after": []},
+  {"id": "T06", "name": "Strip edge formwork", "lat": 24.492366, "lon": 54.36039, "cls": "moderate", "crew": 2, "slots": 6, "trade": "concrete", "after": []},
+  {"id": "T07", "name": "Check scaffold ties", "lat": 24.492069, "lon": 54.360426, "cls": "light", "crew": 2, "slots": 6, "trade": "general", "after": []},
+  {"id": "T08", "name": "Pump-place blinding slab", "lat": 24.491734, "lon": 54.359841, "cls": "moderate", "crew": 2, "slots": 6, "trade": "concrete", "after": []},
+  {"id": "T09", "name": "Stack deck panels", "lat": 24.491845, "lon": 54.360016, "cls": "moderate", "crew": 2, "slots": 6, "trade": "general", "after": []},
+  {"id": "T10", "name": "Tie starter bars", "lat": 24.491902, "lon": 54.360163, "cls": "heavy", "crew": 3, "slots": 4, "trade": "steel", "after": []},
+  {"id": "T11", "name": "Set out grid lines", "lat": 24.492203, "lon": 54.360364, "cls": "light", "crew": 1, "slots": 4, "trade": "general", "after": []},
+  {"id": "T12", "name": "Inspect rebar cover", "lat": 24.49212, "lon": 54.360247, "cls": "light", "crew": 1, "slots": 4, "trade": "steel", "after": ["T02"]}
+ ],
+ "workers": [
+  {"id": "W01", "name": "Rafiq", "trades": ["steel", "general"]},
+  {"id": "W02", "name": "Imran", "trades": ["steel"]},
+  {"id": "W03", "name": "Sajid", "trades": ["steel", "general"]},
+  {"id": "W04", "name": "Nasir", "trades": ["steel"]},
+  {"id": "W05", "name": "Bilal", "trades": ["steel", "concrete"]},
+  {"id": "W06", "name": "Hassan", "trades": ["concrete", "general"]},
+  {"id": "W07", "name": "Farhan", "trades": ["concrete"]},
+  {"id": "W08", "name": "Omar", "trades": ["concrete", "general"]},
+  {"id": "W09", "name": "Tariq", "trades": ["concrete"]},
+  {"id": "W10", "name": "Anwar", "trades": ["general", "electrical"]},
+  {"id": "W11", "name": "Zubair", "trades": ["general"]},
+  {"id": "W12", "name": "Khalid", "trades": ["general", "electrical"]},
+  {"id": "W13", "name": "Mahmoud", "trades": ["electrical"]},
+  {"id": "W14", "name": "Yusuf", "trades": ["electrical", "general"]}
+ ]
+}
