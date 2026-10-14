@@ -3,3 +3,4 @@ __pycache__/
 .pytest_cache/
 data/weather.live.json
 web/fig/*.png
+.serena/
