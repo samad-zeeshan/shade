@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>shade</title>
-  <meta name="description" content="A planner that moves outdoor work into building shade so crews in Gulf summer heat stay under a safe heat limit.">
+  <meta name="description" content="Shade makes a work plan for a building site in summer heat. The plan keeps each worker under a safe heat limit.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='none' stroke='%23ebe9e2'/%3E%3Cpath d='M8 2a6 6 0 0 1 0 12z' fill='%235aa9e6'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,62 +15,95 @@
 </head>
 <body>
   <a class="pill" id="pill" data-planner>Open the planner <span aria-hidden="true">&#8599;</span></a>
+  <div class="progress" id="progress" aria-hidden="true"><i></i></div>
 
   <main>
     <section class="s s-dark hero" aria-labelledby="hero-line">
       <div class="top">
         <span class="mark">shade</span>
-        <span class="eyebrow"><b>01</b> Heat on site</span>
+        <span class="eyebrow"><b>01</b> What Shade does</span>
       </div>
-      <div class="hero-grid">
-        <div class="stat" aria-hidden="true">
-          <div class="stat-n"><span id="stat-n"></span><small>h</small></div>
-          <div class="dim"><i></i><span id="stat-lab"></span><i></i></div>
-        </div>
-        <p class="stat-alt" aria-hidden="true">Shade moves,<br><span>work follows.</span></p>
+      <div class="hero-main">
         <div class="hero-copy">
-          <h1 id="hero-line">Crews in Gulf summer heat can work safely for longer when the plan follows the shade.</h1>
-          <p class="meta" id="hero-meta"></p>
+          <p class="hero-d">Follow the shade. <br><span>Stay under the limit.</span></p>
+          <div class="hero-text">
+            <h1 id="hero-line">Shade makes a work plan for a building site in summer heat. The plan moves crews into building shade as the sun moves.</h1>
+            <p class="hero-sub" id="hero-sub"></p>
+            <div class="hero-cta">
+              <a class="btn btn-solid" data-planner>Open the planner <span aria-hidden="true">&#8599;</span></a>
+              <a class="btn" href="#results">See the results</a>
+            </div>
+          </div>
         </div>
+        <figure class="hero-shot">
+          <a data-planner><img src="hero-map.jpg" alt="The planner map of Plot 7 in Dubai at 09:00. Building shadows fall across the site, and dots show where the crews work." width="1920" height="1440"></a>
+          <figcaption class="meta" id="hero-meta"></figcaption>
+        </figure>
       </div>
+      <dl class="hero-strip" id="hero-strip" hidden>
+        <div><dt>Worker-hours over the heat limit, ban only</dt><dd class="hs-n" id="hs-ban"></dd></div>
+        <div><dt>Extra hours, heat plan</dt><dd class="hs-n" id="hs-blind"></dd></div>
+        <div><dt>Extra hours, shade plan</dt><dd class="hs-n" id="hs-shade"></dd></div>
+      </dl>
     </section>
 
     <section class="s s-dark problem" aria-labelledby="problem-h">
       <p class="eyebrow"><b>02</b> The problem</p>
-      <h2 id="problem-h"><span class="d">The ban ends<br>at 15:00.</span><br><span class="l">The heat does not.</span></h2>
+      <h2 id="problem-h"><span class="d">The ban stops at 15:00.</span> <br><span class="l">The heat keeps going.</span></h2>
       <div class="split">
-        <p class="body">Outdoor workers in the Gulf work through months of summer heat. The law stops their work from 12:30 to 15:00. Outside those hours crews can still be over the heat limit, and a planner has no way to see where shade falls.</p>
-        <figure class="ruler reveal" aria-label="A work day from 05:00 to 20:00. The law stops outdoor work from 12:30 to 15:00.">
-          <div class="ruler-dim"><i></i><span>Work stops by law, 12:30 to 15:00</span><i></i></div>
+        <p class="body">In the UAE summer, the law stops outdoor work from 12:30 to 15:00. This rule is the midday ban. Before 12:30 and after 15:00, the heat can still be above a safe limit. A site manager cannot easily see where the shade falls at each hour.</p>
+        <figure class="ruler reveal" aria-label="A work day from 05:00 to 20:00. The midday ban stops outdoor work from 12:30 to 15:00.">
+          <div class="ruler-dim"><i></i><span>Midday ban, 12:30 to 15:00</span><i></i></div>
           <div class="ruler-bar"><span class="ban"></span></div>
           <div class="ruler-ticks mono"><span>05:00</span><span>08:00</span><span>11:00</span><span>14:00</span><span>17:00</span><span>20:00</span></div>
         </figure>
       </div>
     </section>
 
+    <section class="s s-dark what" aria-labelledby="what-h">
+      <p class="eyebrow"><b>03</b> What it is</p>
+      <h2 id="what-h"><span class="d">A work plan</span> <br><span class="l">that reads the sun.</span></h2>
+      <div class="split">
+        <p class="body">Shade is a planning tool for building sites in the UAE summer. You give it the site, the workers and the tasks for one day. It gives back a plan for each worker from 05:00 to 20:00, in 15-minute steps.</p>
+        <p class="body">The plan keeps each worker under a safe heat limit. A heat limit is the most heat a worker can safely take for one type of work. Heavy work has a lower limit than light work. The plan also obeys the midday ban.</p>
+      </div>
+    </section>
+
     <section class="s s-dark how" aria-labelledby="how-h">
-      <p class="eyebrow"><b>03</b> How it works</p>
-      <h2 id="how-h"><span class="d">Three steps,</span><br><span class="l">every 15 minutes.</span></h2>
+      <p class="eyebrow"><b>04</b> How it works</p>
+      <h2 id="how-h"><span class="d">Three steps,</span> <br><span class="l">every 15 minutes.</span></h2>
       <div class="how-grid">
         <ol class="steps">
-          <li><span class="idx">01</span><h3>Find the shade</h3><p>Real building outlines and the path of the sun give the shadow at each work spot every 15 minutes.</p></li>
-          <li><span class="idx">02</span><h3>Set a heat limit</h3><p>A heat model from published studies turns the weather and the shade into a heat limit for each spot. The model uses a heat index called WBGT. It adds up the air heat, the sun, the wind and the humidity.</p></li>
-          <li><span class="idx">03</span><h3>Place the crews</h3><p>A scheduler puts each crew where and when work is allowed.</p></li>
+          <li><span class="idx">01</span><h3>Find the shade</h3><p>Shade uses real building outlines and the path of the sun. It finds the shade at each work spot every 15 minutes.</p></li>
+          <li><span class="idx">02</span><h3>Set a heat limit</h3><p>Shade uses the weather and the shade to find a heat index for each work spot. The heat index (WBGT) adds up air temperature, sun, wind and humidity. Published studies turn the heat index into safe minutes of work per hour.</p></li>
+          <li><span class="idx">03</span><h3>Place the crews</h3><p>A scheduler puts each crew at a work spot and a time where the work is safe. It also obeys the midday ban.</p></li>
         </ol>
         <figure class="fig">
-          <figcaption class="eyebrow"><b>Fig. 1</b> A tower and its shadow</figcaption>
+          <figcaption class="eyebrow"><b>Fig. 1</b> How shade moves</figcaption>
           <iframe src="fig/hairline-tower.html?theme=dark" loading="lazy" title="A tower and its shadow on a plot"></iframe>
           <p class="fig-note">Move your pointer across the drawing to move the sun.</p>
         </figure>
       </div>
     </section>
 
+    <section class="s s-dark tested" aria-labelledby="tested-h">
+      <p class="eyebrow"><b>05</b> What we tested</p>
+      <h2 id="tested-h"><span class="d">Three plans. One site.</span> <br><span class="l">Real weather.</span></h2>
+      <p class="body">We compared three plans on the same site and the same day. Each day uses real weather from a past summer. We tested two sites, one in Dubai and one in Abu Dhabi. Each site has 14 workers and 12 to 16 building tasks.</p>
+      <ol class="uses">
+        <li><span class="idx">1</span><h3>Ban only</h3><p>The plan stops work from 12:30 to 15:00. It does not check the heat at other times.</p></li>
+        <li><span class="idx">2</span><h3>Heat plan</h3><p>The plan keeps each worker under the heat limit. It treats every work spot as if it is in full sun.</p></li>
+        <li><span class="idx">3</span><h3>Shade plan</h3><p>The plan keeps each worker under the heat limit. It uses the heat at each work spot, in sun or in shade.</p></li>
+      </ol>
+      <p class="note">For each plan we count the extra hours. Extra hours are overtime after 17:00 plus work that moves to a night shift. One worker-hour is one worker for one hour.</p>
+    </section>
+
     <section class="s s-sheet results" id="results" aria-labelledby="results-h">
-      <p class="eyebrow"><b>04</b> Results</p>
-      <h2 id="results-h"><span class="d">Different sites,</span><br><span class="l">different days.</span></h2>
+      <p class="eyebrow"><b>06</b> Results</p>
+      <h2 id="results-h"><span class="d">The ban is not enough.</span> <br><span class="l">A heat plan fixes it.</span></h2>
       <div class="pair reveal">
-        <div><span class="pair-n" id="pair-b"></span><span class="pair-lab">Extra hours with one site temperature</span></div>
-        <div><span class="pair-n" id="pair-a"></span><span class="pair-lab">Extra hours with per-spot shade</span></div>
+        <div><span class="pair-n" id="pair-b"></span><span class="pair-lab">Extra hours, heat plan</span></div>
+        <div><span class="pair-n" id="pair-a"></span><span class="pair-lab">Extra hours, shade plan</span></div>
         <p class="body" id="pair-line"></p>
       </div>
       <div class="table-wrap">
@@ -78,36 +111,36 @@
           <caption class="vh">Results for each day the planner has run</caption>
           <thead><tr id="runs-head">
             <th scope="col">City</th><th scope="col">Date</th><th scope="col">Morning weather</th>
-            <th scope="col">Over the heat limit with the ban</th><th scope="col">Extra hours with one site temperature</th>
-            <th scope="col">Extra hours with per-spot shade</th><th scope="col">Verdict</th>
+            <th scope="col">Over the heat limit, ban only</th><th scope="col">Extra hours, heat plan</th>
+            <th scope="col">Extra hours, shade plan</th><th scope="col">Verdict</th>
           </tr></thead>
           <tbody id="runs-body"></tbody>
         </table>
       </div>
-      <p class="note">Extra hours are overtime after 17:00 plus any work pushed to a night shift. All hours are crew hours. Open a row to see that day in the planner.</p>
+      <p class="note">Extra hours are overtime after 17:00 plus work that moves to a night shift. All hours are worker-hours. Select a city to open that day in the planner.</p>
     </section>
 
     <section class="s s-dark who" aria-labelledby="who-h">
-      <p class="eyebrow"><b>05</b> Who it is for</p>
-      <h2 id="who-h"><span class="d">For the site planner</span><br><span class="l">and the safety officer.</span></h2>
+      <p class="eyebrow"><b>07</b> Who it is for</p>
+      <h2 id="who-h"><span class="d">For the site manager</span> <br><span class="l">and the safety officer.</span></h2>
       <ol class="uses">
-        <li><span class="idx">A</span><h3>See where work is allowed</h3><p>The map shows where a crew may work on the plot at any time of day.</p></li>
-        <li><span class="idx">B</span><h3>Plan crews around the shade</h3><p>The plan moves each crew into shadow as the shadow moves across the site.</p></li>
-        <li><span class="idx">C</span><h3>Hand out each crew's plan</h3><p>Each crew's plan downloads as a spreadsheet with times and places.</p></li>
+        <li><span class="idx">A</span><h3>See where work is safe</h3><p>The map shows where a crew can safely work at each time of day.</p></li>
+        <li><span class="idx">B</span><h3>Plan crews around the shade</h3><p>The plan moves each crew into the shade as the shade moves across the site.</p></li>
+        <li><span class="idx">C</span><h3>Give each crew its plan</h3><p>You can download the plan as a spreadsheet. It lists the times and work spots for each worker.</p></li>
       </ol>
     </section>
 
     <section class="s s-dark sources" aria-labelledby="src-h">
-      <p class="eyebrow"><b>06</b> Sources</p>
-      <h2 id="src-h"><span class="d">Built on</span><br><span class="l">published research.</span></h2>
+      <p class="eyebrow"><b>08</b> Sources</p>
+      <h2 id="src-h"><span class="d">Every number</span> <br><span class="l">has a source.</span></h2>
       <ol class="src-list" id="src-list" hidden></ol>
-      <p class="body">Building outlines come from OpenStreetMap. Weather comes from Open-Meteo. <a data-planner>The planner lists every full citation.</a></p>
+      <p class="body">Building outlines come from OpenStreetMap. Weather comes from Open-Meteo. <a data-planner>The planner lists the full source for each number.</a></p>
     </section>
   </main>
 
   <footer class="s s-heat end" id="end">
-    <p class="eyebrow"><b>07</b> End of sheet</p>
-    <p class="voice">Shade moves. The work follows.</p>
+    <p class="eyebrow"><b>09</b> Try it</p>
+    <p class="voice">Plan the shift around the shade.</p>
     <nav class="end-links">
       <a data-planner>Open the planner <span aria-hidden="true">&#8599;</span></a>
       <a data-repo>Source code <span aria-hidden="true">&#8599;</span></a>
@@ -115,8 +148,10 @@
     <div class="word" aria-hidden="true">shade</div>
   </footer>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/SplitText.min.js"></script>
+  <script src="https://unpkg.com/lenis@1.1.20/dist/lenis.min.js"></script>
   <script src="story.js"></script>
 </body>
 </html>
